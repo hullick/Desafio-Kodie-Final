@@ -4,7 +4,7 @@
 
 **Objetivo:** registrar, listar, editar e excluir gastos e entradas em poucos toques.
 
-**Arquitetura:** tabela `lancamentos` com checks e RLS; categorias como constante compartilhada (front) e `check` (banco); um sheet único para criar e editar, plugado no `NovoLancamentoService` do plan 00; `DadosAlterados` avisa o painel de que algo mudou.
+**Arquitetura:** tabela `lancamentos` com checks e RLS; a function `lancamentos.mts` expõe o CRUD em `/api/lancamentos` dentro de `comUsuario`; categorias como constante compartilhada (front) e `check` (banco); um sheet único para criar e editar, plugado no `NovoLancamentoService` do plan 00; `DadosAlterados` avisa o painel de que algo mudou.
 
 **Stack:** a do plan 00.
 
@@ -30,23 +30,39 @@
 
 ### Tarefa 1: tabela `lancamentos`
 
-**Arquivos:** criar `supabase/migrations/20261201000200_lancamentos.sql`, `supabase/tests/02_lancamentos.test.sql`
+**Arquivos:** criar `db/migrations/20261201000200_lancamentos.sql`, `db/tests/02_lancamentos.test.sql`
 
 **Interfaces:**
 - Produz:
-  - `public.lancamentos(id uuid pk default gen_random_uuid(), user_id uuid not null default auth.uid() references auth.users on delete cascade, tipo text check in ('gasto','entrada'), valor_centavos bigint check between 1 and 99999999, categoria text not null, descricao text check (char_length(descricao) <= 60), data date not null, criado_em, atualizado_em)`
+  - `public.lancamentos(id uuid pk default gen_random_uuid(), user_id text not null default app.usuario_id() references auth."user"(id) on delete cascade, tipo text check in ('gasto','entrada'), valor_centavos bigint check between 1 and 99999999, categoria text not null, descricao text check (char_length(descricao) <= 60), data date not null, criado_em, atualizado_em)`
   - `check` de categoria por tipo (as listas das restrições)
   - índice `(user_id, data desc)`
-  - RLS com as 4 políticas de dono
+  - RLS (com `force`) e as 4 políticas de dono (`user_id = app.usuario_id()`); grants de select, insert, update e delete para `nubanko_app`
   - função genérica `public.impedir_troca_de_dono()` (trigger `before update`: `new.user_id <> old.user_id` levanta erro), **reutilizada no plan 04**
   - trigger `validar_data_lancamento` (`new.data > (now() at time zone 'America/Sao_Paulo')::date` levanta erro)
   - trigger de `atualizado_em`
 
-- [ ] **Passo 1:** testes pgTAP: insere válido como A; `throws_ok` para valor 0, valor 100000000, categoria `salario` com tipo `gasto`, descrição de 61 caracteres e data de amanhã; B não vê, não atualiza (0 linhas) e não apaga o de A; A não consegue mudar `user_id` para B; anônimo vê 0 linhas; insert com `user_id` de B explícito falha por RLS.
+- [ ] **Passo 1:** testes pgTAP: insere válido como A; `throws_ok` para valor 0, valor 100000000, categoria `salario` com tipo `gasto`, descrição de 61 caracteres e data de amanhã; B não vê, não atualiza (0 linhas) e não apaga o de A; A não consegue mudar `user_id` para B; sem `app.user_id`, vê 0 linhas; insert com `user_id` de B explícito falha por RLS.
 - [ ] **Passos 2 a 4:** FAIL → migração → PASS (`dbtest` completo).
 - [ ] **Passo 5:** commit `feat(R-00.4): cria tabela de lançamentos com RLS e validações`.
 
-### Tarefa 2: categorias e lógica do teclado
+### Tarefa 2: API de lançamentos
+
+**Arquivos:** criar `netlify/functions/lancamentos.mts`, `netlify/functions/lancamentos.spec.ts`
+
+**Interfaces:**
+- Consome: `comUsuario`, `tratar`, `lerCorpo`, `json` (plan 00).
+- Produz (`config = { path: ['/api/lancamentos', '/api/lancamentos/:id'] }`), sempre em camelCase:
+  - `GET /api/lancamentos?ano=&mes=&limite=` → `Lancamento[]` do mês, ordenado `data desc, criado_em desc` (`limite` opcional, para os "últimos")
+  - `GET /api/lancamentos/:id` → `Lancamento` ou `404`
+  - `POST /api/lancamentos` → `201 Lancamento`; `PUT /api/lancamentos/:id` → `Lancamento`; `DELETE /api/lancamentos/:id` → `204`
+  - erros de `check` e trigger viram `400 { erro: 'dados_invalidos' }`; id inexistente **ou de outra pessoa** vira `404 { erro: 'nao_encontrado' }`
+
+- [ ] **Passo 1:** testes de integração (handler + `db` do compose, sessões de A e B criadas com o helper de testes): CRUD feliz como A; B recebe `404` em `GET`, `PUT` e `DELETE` do lançamento de A e não o vê na lista; sem sessão, `401` em todas as rotas; `user_id` no corpo dá `400`; valor 0 dá `400 dados_invalidos`; `ano`/`mes` ausentes ou inválidos dão `400`.
+- [ ] **Passos 2 a 4:** FAIL → implementar (SQL parametrizado, nunca concatenado) → PASS, incluindo o guarda das functions.
+- [ ] **Passo 5:** commit `feat(R-00.1): adiciona API de lançamentos`.
+
+### Tarefa 3: categorias e lógica do teclado
 
 **Arquivos:** criar `web/src/app/core/categorias.ts`, `features/lancamentos/teclado.ts` + specs
 
@@ -63,7 +79,7 @@
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(R-02.3): adiciona categorias e lógica do teclado numérico`.
 
-### Tarefa 3: `LancamentosService` e `DadosAlterados`
+### Tarefa 4: `LancamentosService` e `DadosAlterados`
 
 **Arquivos:** criar `core/dados-alterados.ts`, `features/lancamentos/lancamentos.service.ts` + specs
 
@@ -73,11 +89,11 @@
   - `type Lancamento = { id; tipo: TipoLancamento; valorCentavos: number; categoria: string; descricao: string | null; data: string }`
   - `LancamentosService { criar(l: Omit<Lancamento,'id'>): Promise<Lancamento>; atualizar(id, l): Promise<Lancamento>; excluir(id): Promise<void>; obter(id): Promise<Lancamento>; listarDoMes(m: Mes): Promise<Lancamento[]>; ultimos(m: Mes, n: number): Promise<Lancamento[]> }`. Toda escrita chama `notificar()`; a descrição passa por `trim() || null`.
 
-- [ ] **Passo 1:** testes com o client mockado: `listarDoMes({2026,11})` filtra `data >= '2026-11-01'` e `< '2026-12-01'` e ordena `data desc, criado_em desc`; criar, atualizar e excluir incrementam `versao`; descrição `'  '` vira `null`; snake_case ↔ camelCase.
+- [ ] **Passo 1:** testes com `HttpTestingController`: `listarDoMes({2026,11})` chama `GET /api/lancamentos?ano=2026&mes=11`; `ultimos(m, 4)` acrescenta `limite=4`; criar, atualizar e excluir incrementam `versao`; descrição `'  '` vira `null`.
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(R-02.7): adiciona serviço de lançamentos`.
 
-### Tarefa 4: sheet de novo e editar lançamento
+### Tarefa 5: sheet de novo e editar lançamento
 
 **Arquivos:** criar `shared/ui/numeric-keypad/*`, `shared/ui/chip/*`, `features/lancamentos/lancamento-sheet/*` + specs; montar o sheet no `ShellComponent`
 
@@ -96,7 +112,7 @@
 - [ ] **Passos 2 a 4:** FAIL → implementar seguindo `design/novo_lan_amento_nubanko` → PASS.
 - [ ] **Passo 5:** commit `feat(R-02.1): adiciona sheet de novo lançamento`.
 
-### Tarefa 5: lista "Ver todos"
+### Tarefa 6: lista "Ver todos"
 
 **Arquivos:** criar `features/lancamentos/lista/*` + spec; rota `/lancamentos?ano=&mes=` (filha do shell); `shared/ui/lancamento-item/*` (reutilizado pelo painel)
 
@@ -108,7 +124,7 @@
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(R-02.8): adiciona lista de lançamentos do mês`.
 
-### Tarefa 6: e2e e usabilidade
+### Tarefa 7: e2e e usabilidade
 
 **Arquivos:** criar `web/e2e/02-lancamentos.spec.ts`
 
@@ -116,7 +132,7 @@
   - `U-02.1`: com `contadorDeToques`, "+", chip Alimentação e Salvar (os dígitos são digitados à parte) somam `total() <= 3`, e o toast aparece em ≤ 1 s (U-00.7);
   - `R-02.7` o gasto aparece na lista;
   - `R-02.9` editar o valor e excluir;
-  - `R-02.10` com `page.route('**/rest/v1/lancamentos*', r => r.abort())`, os dados permanecem no sheet;
+  - `R-02.10` com `page.route('**/api/lancamentos*', r => r.abort())`, os dados permanecem no sheet;
   - `U-02.2` valor e chips visíveis sem rolar em 360×740;
   - `U-02.3` "Salvar" e o teclado na zona do polegar;
   - `U-02.4` `aria-pressed` no chip;

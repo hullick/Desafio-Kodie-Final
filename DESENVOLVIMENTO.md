@@ -79,11 +79,13 @@ Rode dentro de `web/`.
 
 | Falta | Onde está planejado |
 |-------|---------------------|
-| Supabase (banco, autenticação e RLS) e Docker Compose | Plan 00, tarefas 1 e 2; plan 01 |
-| Testes E2E com Playwright (o pacote está instalado, mas ainda não há configuração) | Plan 00, tarefa 7 |
+| Backend na Netlify: Postgres (Netlify DB), Netlify Functions em `/api/*`, RLS e Docker Compose | Plan 00, tarefas 1 a 3; tarefa de API de cada plan 02 a 05 |
+| Autenticação real com Better Auth (cadastro, confirmação por e-mail, recuperação de senha) | Plan 01 |
+| Hospedagem e CI/CD (deploy previews, homologação e produção na Netlify) | Spec 00, "Hospedagem e deploy"; plan próprio a escrever |
+| Testes E2E com Playwright (o pacote está instalado, mas ainda não há configuração) | Plan 00, tarefa 8 |
 | Alterar senha, Excluir conta e Esqueci a senha | Plans 01 e 05 (dependem do backend) |
 | Fechar o sheet com o botão voltar do Android (U-02.6). Hoje fecha com Esc e com toque no fundo. | Plan 02 |
-| Os 4 agentes e a matriz de rastreabilidade | Plan 00, tarefa 8 |
+| Os 4 agentes e a matriz de rastreabilidade | Plan 00, tarefa 9 |
 
 ---
 
@@ -131,7 +133,7 @@ web/src/
 │   │   ├── compartilhado/     Mapeadores domínio → view model, seletor de mês
 │   │   └── shell/             Casca das abas logadas (topo, navegação, sheets, toast)
 │   ├── app.routes.ts          Rotas (todas carregadas sob demanda)
-│   └── app.config.ts          Providers globais (aqui se escolhe memória ou Supabase)
+│   └── app.config.ts          Providers globais (aqui se escolhe memória ou API)
 ├── testing/                   Helpers de teste
 └── styles.css                 Tokens do design system (cores, fontes, sombras)
 ```
@@ -195,13 +197,32 @@ Exemplo: registrar um gasto.
 | `ToastService` | `mostrar('Gasto registrado')`; o toast some em 3 s. |
 | `Preferencias` | "Esconder valores" (o olho), salvo só no aparelho. |
 
-### 5.4 Repositórios: memória hoje, Supabase amanhã
+### 5.4 Repositórios: memória hoje, API da Netlify amanhã
 
 `core/dados/repositorios.ts` define **classes abstratas** (`LancamentosRepositorio`, `CaixinhasRepositorio`, `ResumoRepositorio`, `PerfilRepositorio`, `SessaoRepositorio`). Facades e guarda dependem só delas.
 
 Hoje, `proverDadosEmMemoria()` (em `app.config.ts`) liga essas classes às implementações de `core/dados/memoria/`, com os dados de `semente.ts`.
 
-**Para trocar pelo Supabase:** crie as implementações (ex.: `core/dados/supabase/`), uma função `proverDadosSupabase()` e troque **uma linha** no `app.config.ts`. Nenhuma página ou componente muda. Os testes dos repositórios em memória servem de referência para o comportamento esperado (ordem, erros como `ErroCaixinha('saldo_insuficiente')`).
+**Para trocar pela API:** crie as implementações HTTP (ex.: `core/dados/http/`, chamando `/api/*` com o `HttpClient`), uma função `proverDadosHttp()` e troque **uma linha** no `app.config.ts`. Nenhuma página ou componente muda. Os testes dos repositórios em memória servem de referência para o comportamento esperado (ordem, erros como `ErroCaixinha('saldo_insuficiente')`, que a API devolve como `409 { "erro": "saldo_insuficiente" }`).
+
+### 5.5 O backend (planejado)
+
+A decisão está em `docs/adr/0001-backend-netlify.md` e o desenho, na spec 00.
+
+```
+Navegador ──HTTPS──▶ Netlify ─┬─ /            → web/dist/web/browser (Angular)
+                              ├─ /api/auth/*  → netlify/functions/auth.mts (Better Auth)
+                              └─ /api/*       → netlify/functions/<recurso>.mts
+                                                   └─ comUsuario(req, fn)
+                                                        ├─ valida a sessão (senão 401)
+                                                        ├─ begin; set_config('app.user_id', id, true)
+                                                        └─ queries como nubanko_app ──▶ Postgres (RLS)
+```
+
+- **Toda function de domínio usa `comUsuario`.** Um teste falha se alguma não usar.
+- **O RLS continua ligado** como segunda camada: mesmo que uma query esqueça o `where user_id`, o banco só devolve as linhas do usuário da transação.
+- **A API nunca aceita `user_id` no corpo**: o banco preenche com `app.usuario_id()`.
+- Localmente, `docker compose up` sobe `db` (Postgres 17), `migrate`, `mail` (Mailpit) e `app` (`netlify dev` em `localhost:8888`, que já inicia o Angular).
 
 ---
 
@@ -348,6 +369,7 @@ As divergências entre mockup e spec (sem CPF, sem biometria, sem notificações
 
 | Decisão | Motivo |
 |---------|--------|
+| Backend na **Netlify** (Functions + Netlify DB + Better Auth), sem Supabase | Decisão do time; detalhes e alternativas em `docs/adr/0001-backend-netlify.md`. |
 | Tecla **"00"** no lugar da vírgula do teclado | Na digitação por centavos, a vírgula não faria nada. |
 | Nenhuma categoria vem pré-selecionada | Pré-seleção gera dado errado sem a pessoa perceber (R-02.4). |
 | Prazo da caixinha com **dia, mês e ano** (antes era mês/ano) | Pedido do time; spec e plan 04 foram atualizados. |
@@ -355,7 +377,7 @@ As divergências entre mockup e spec (sem CPF, sem biometria, sem notificações
 | No sheet, "Salvar" fica fixo no rodapé e o teclado é compacto (teclas de 48 px) | "Salvar" sempre visível em 360×740 (U-02.3) sem esconder o "apagar". |
 | Excluir pede uma segunda confirmação ("Excluir de vez") | Evita perda por toque acidental (H3/H5). |
 | `/privacidade` é pública | O link do cadastro precisa funcionar antes do login. |
-| Login de demonstração aceita qualquer senha para e-mails conhecidos | Só enquanto não há Supabase; nunca guarda a senha. |
+| Login de demonstração aceita qualquer senha para e-mails conhecidos | Só enquanto o Better Auth não entra (plan 01); nunca guarda a senha. |
 | Cadastro mostra mensagem neutra e não entra direto | Não revela se o e-mail existe (R-01.4) e exige confirmação por e-mail (R-01.5). |
 
 ---
@@ -370,4 +392,4 @@ As divergências entre mockup e spec (sem CPF, sem biometria, sem notificações
 | Dados do facade não aparecem no teste | Faltou `await estabilizar()` depois de mudar algo. |
 | Data aparece como `05/25/2027` no navegador | O campo de data nativo segue o idioma do navegador. Em pt-BR aparece `25/05/2027`. |
 | A página fica em branco por um instante | As rotas carregam sob demanda; é o carregamento do chunk. |
-| Mudei dados e eles sumiram ao recarregar | Os dados são em memória até o Supabase entrar. |
+| Mudei dados e eles sumiram ao recarregar | Os dados são em memória até a API da Netlify entrar. |

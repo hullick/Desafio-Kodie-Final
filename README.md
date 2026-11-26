@@ -82,7 +82,8 @@ O **NuBanko** resolve isso com três coisas, e só três:
 | Caixinhas: criar, editar, guardar, retirar, sugestão mensal e metas atingidas | ✅ |
 | Perfil, edição do nome e página de privacidade em linguagem simples | ✅ |
 | Login e cadastro (telas prontas, com sessão de demonstração) | 🟡 |
-| Backend Supabase com regras de acesso por dono (RLS) | 🔜 |
+| Backend na Netlify (Functions + Netlify DB) com regras de acesso por dono (RLS) | 🔜 |
+| Autenticação real com Better Auth | 🔜 |
 | Ambiente local com Docker Compose | 🔜 |
 | Testes E2E e de usabilidade com Playwright e axe | 🔜 |
 
@@ -141,7 +142,7 @@ npm run build                        # build de produção (PWA)
 
 </details>
 
-> **Atenção:** por enquanto os dados ficam **em memória**. Recarregar a página volta tudo ao início. O Supabase entra nas próximas etapas.
+> **Atenção:** por enquanto os dados ficam **em memória**. Recarregar a página volta tudo ao início. O backend na Netlify entra nas próximas etapas.
 
 ## 🏗️ Como é feito
 
@@ -149,7 +150,8 @@ npm run build                        # build de produção (PWA)
 |---|---|
 | **Front** | Angular 22 (standalone, signals, zoneless), Tailwind CSS 4, ícones Lucide, PWA |
 | **Arquitetura** | Atomic Design (átomos → moléculas → organismos → templates → páginas) com um **facade** por página |
-| **Dados** | Repositórios abstratos: em memória hoje, Supabase (Postgres, Auth e RLS) em seguida, sem mexer nas telas |
+| **Dados** | Repositórios abstratos: em memória hoje, API em Netlify Functions em seguida, sem mexer nas telas |
+| **Backend** *(planejado)* | Netlify Functions, Netlify DB (Postgres/Neon) com RLS, Better Auth; hospedagem e deploy previews na Netlify |
 | **Testes** | Vitest e TestBed hoje; Playwright, axe e pgTAP no plano |
 | **Método** | Desenvolvimento orientado a specs: spec → plan → testes → código |
 
