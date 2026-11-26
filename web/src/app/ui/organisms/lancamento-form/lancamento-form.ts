@@ -27,10 +27,10 @@ const TIPOS: readonly OpcaoVM<TipoLancamento>[] = [
   imports: [NbAmountDisplay, NbButton, NbCategoryChip, NbDateChip, NbIcon, NbInput, NbKeypad, NbSegmented],
   template: `
     <h2 class="text-center text-xs font-bold uppercase tracking-widest text-ink/80">{{ inicial() ? 'Editar lançamento' : 'Novo lançamento' }}</h2>
-    <div class="mt-3 flex justify-center">
+    <div class="mt-2 flex justify-center">
       <nb-segmented [opcoes]="tipos" rotulo="Tipo do lançamento" [valor]="tipo()" (valorChange)="trocarTipo($event)" />
     </div>
-    <nb-amount-display class="my-5" [centavos]="centavos()" [tom]="tipo()" />
+    <nb-amount-display class="my-3" [centavos]="centavos()" [tom]="tipo()" />
 
     <div role="group" aria-label="Categoria" class="grid grid-cols-4 gap-2">
       @for (c of categorias(); track c.id) {
@@ -39,7 +39,7 @@ const TIPOS: readonly OpcaoVM<TipoLancamento>[] = [
       }
     </div>
 
-    <div class="mt-3 flex gap-2">
+    <div class="mt-2 flex gap-2">
       <label class="relative flex-1">
         <span class="sr-only">Descrição (opcional)</span>
         <nb-icon nome="pencil-line" [tamanho]="18" class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
@@ -49,23 +49,25 @@ const TIPOS: readonly OpcaoVM<TipoLancamento>[] = [
       <nb-date-chip [(data)]="data" rotuloAcessivel="Data do lançamento" />
     </div>
 
-    <nb-keypad class="mt-3" [capturarTeclado]="true" (tecla)="aoTeclar($event)" />
+    <nb-keypad class="mt-2" [compacto]="true" [capturarTeclado]="true" (tecla)="aoTeclar($event)" />
 
+    <div class="sticky bottom-0 -mx-5 bg-surface px-5 pb-6">
     <div aria-live="assertive">
       @if (erro(); as e) { <p class="mt-2 flex items-center gap-1 text-sm text-neg-ink"><nb-icon nome="circle-alert" [tamanho]="16" />{{ e }}</p> }
     </div>
-    <button nb-button [larguraTotal]="true" class="mt-3" [disabled]="!podeSalvar() || salvando()" (click)="enviar()">
+    <button nb-button [larguraTotal]="true" class="mt-1" [disabled]="!podeSalvar() || salvando()" (click)="enviar()">
       {{ salvando() ? 'Salvando…' : 'Salvar' }}
     </button>
+    </div>
 
     @if (inicial()) {
       @if (confirmandoExclusao()) {
-        <div class="mt-2 flex gap-2" role="group" aria-label="Confirmar exclusão">
+        <div class="mb-6 flex gap-2" role="group" aria-label="Confirmar exclusão">
           <button nb-button variante="fantasma" class="flex-1" (click)="confirmandoExclusao.set(false)">Cancelar</button>
           <button nb-button variante="perigo" class="flex-1" (click)="excluir.emit()">Excluir de vez</button>
         </div>
       } @else {
-        <button nb-button variante="perigo" [larguraTotal]="true" class="mt-2" (click)="confirmandoExclusao.set(true)">
+        <button nb-button variante="perigo" [larguraTotal]="true" class="mb-6" (click)="confirmandoExclusao.set(true)">
           <nb-icon nome="trash-2" [tamanho]="18" />Excluir
         </button>
       }

@@ -16,15 +16,17 @@ import { NbKeypad } from '../../molecules/keypad/keypad';
   template: `
     <h2 class="text-center font-display text-lg font-bold">{{ titulo() }}</h2>
     <p class="text-center text-sm text-muted">Você tem {{ saldo() }} nesta caixinha</p>
-    <nb-amount-display class="my-5" [centavos]="centavos()" />
+    <nb-amount-display class="my-3" [centavos]="centavos()" />
     <div class="flex justify-center"><nb-date-chip [(data)]="data" rotuloAcessivel="Data do movimento" /></div>
-    <nb-keypad class="mt-3" [capturarTeclado]="true" (tecla)="aoTeclar($event)" />
+    <nb-keypad class="mt-2" [compacto]="true" [capturarTeclado]="true" (tecla)="aoTeclar($event)" />
+    <div class="sticky bottom-0 -mx-5 bg-surface px-5 pb-6">
     <div aria-live="assertive">
       @if (mensagem(); as e) { <p class="mt-2 flex items-center gap-1 text-sm text-neg-ink"><nb-icon nome="circle-alert" [tamanho]="16" />{{ e }}</p> }
     </div>
-    <button nb-button [larguraTotal]="true" class="mt-3" [disabled]="!podeSalvar() || salvando()" (click)="enviar()">
+    <button nb-button [larguraTotal]="true" class="mt-1" [disabled]="!podeSalvar() || salvando()" (click)="enviar()">
       {{ salvando() ? 'Salvando…' : tipo() === 'guardar' ? 'Guardar' : 'Retirar' }}
     </button>
+    </div>
   `,
   host: { class: 'block' },
 })

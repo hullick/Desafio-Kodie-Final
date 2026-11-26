@@ -29,4 +29,9 @@ describe('NbKeypad (R-02.3)', () => {
     input.remove();
     expect(recebidas).toEqual(['5', 'apagar']);
   });
+
+  it('modo compacto mantém alvo de toque ≥ 44 px (U-00.1)', async () => {
+    const r = await renderizar(NbKeypad, { compacto: true });
+    expect(r.qs('button').every((b) => b.classList.contains('min-h-12') && !b.classList.contains('min-h-14'))).toBe(true);
+  });
 });
