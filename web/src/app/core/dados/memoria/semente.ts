@@ -1,4 +1,4 @@
-import { Mes, hojeISO, mesAtual, somarMeses } from '../../tempo/mes';
+import { hojeISO, mesAtual, somarMeses, ultimoDiaISO } from '../../tempo/mes';
 import { Caixinha, Lancamento, MovimentoCaixinha, Perfil } from '../../dominio/tipos';
 
 export interface BancoSemente {
@@ -22,7 +22,7 @@ export function criarSemente(agora: Date = new Date()): BancoSemente {
   const diaAnterior = (d: number) => `${anterior.ano}-${String(anterior.mes).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   const criadoEm = agora.toISOString();
   const lanc = (id: string, p: Omit<Lancamento, 'id' | 'criadoEm'>): Lancamento => ({ id, criadoEm, ...p });
-  const prazo = (n: number): Mes => somarMeses(m, n);
+  const prazo = (n: number): string => ultimoDiaISO(somarMeses(m, n));
 
   return {
     perfil: {

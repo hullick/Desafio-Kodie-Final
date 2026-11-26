@@ -3,7 +3,7 @@ import { percentuais } from '../../core/calculos/resumo';
 import { categoria } from '../../core/dominio/categorias';
 import { iconeDaCaixinha } from '../../core/dominio/icones-caixinha';
 import { Caixinha, CategoriaGastoId, Lancamento, MovimentoCaixinha, NovoLancamento } from '../../core/dominio/tipos';
-import { Mes, rotuloDia, rotuloMesCurto } from '../../core/tempo/mes';
+import { formatarData, rotuloDia } from '../../core/tempo/mes';
 import { CaixinhaCardVM, FatiaCategoriaVM, GrupoTransacoesVM, MovimentoItemVM, TransacaoItemVM } from '../../ui/modelos';
 
 /*
@@ -42,7 +42,8 @@ export function paraFatiasVM(porCategoria: readonly { categoria: CategoriaGastoI
   });
 }
 
-export function paraCaixinhaVM(c: Caixinha, hoje: Mes): CaixinhaCardVM & { readonly calculo: CalculoMeta } {
+/** `hoje` em YYYY-MM-DD. */
+export function paraCaixinhaVM(c: Caixinha, hoje: string): CaixinhaCardVM & { readonly calculo: CalculoMeta } {
   const calculo = calcularMeta(c, hoje);
   return {
     id: c.id,
@@ -52,7 +53,7 @@ export function paraCaixinhaVM(c: Caixinha, hoje: Mes): CaixinhaCardVM & { reado
     metaCentavos: c.metaCentavos,
     progresso: calculo.progresso,
     percentual: calculo.percentual,
-    prazoRotulo: rotuloMesCurto(c.prazo),
+    prazoRotulo: formatarData(c.prazo),
     sugeridoCentavos: calculo.sugeridoMensalCentavos,
     faltamCentavos: calculo.faltamCentavos,
     estado: calculo.estado,

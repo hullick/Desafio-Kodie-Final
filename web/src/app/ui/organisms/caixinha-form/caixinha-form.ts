@@ -3,7 +3,7 @@ import { calcularMeta } from '../../../core/calculos/meta';
 import { ICONES_CAIXINHA } from '../../../core/dominio/icones-caixinha';
 import { DadosCaixinha, IconeCaixinha } from '../../../core/dominio/tipos';
 import { formatBRL } from '../../../core/formatacao/dinheiro';
-import { Mes, mesAtual, somarMeses } from '../../../core/tempo/mes';
+import { formatarData, hojeISO, somarMesesISO } from '../../../core/tempo/mes';
 import { NbButton } from '../../atoms/button/button';
 import { NbIcon } from '../../atoms/icon/icon';
 import { NbInput } from '../../atoms/input/input';
@@ -11,7 +11,6 @@ import { NbProgressBar } from '../../atoms/progress-bar/progress-bar';
 import { NbFormField } from '../../molecules/form-field/form-field';
 import { NbIconOption } from '../../molecules/icon-option/icon-option';
 import { NbMoneyInput } from '../../molecules/money-input/money-input';
-import { NbMonthSelect } from '../../molecules/month-select/month-select';
 import { NbQuickAmounts } from '../../molecules/quick-amounts/quick-amounts';
 
 const MAX_NOME = 40;
@@ -22,11 +21,11 @@ const MAX_NOME = 40;
  */
 @Component({
   selector: 'nb-caixinha-form',
-  imports: [NbButton, NbFormField, NbIcon, NbIconOption, NbInput, NbMoneyInput, NbMonthSelect, NbProgressBar, NbQuickAmounts],
+  imports: [NbButton, NbFormField, NbIcon, NbIconOption, NbInput, NbMoneyInput, NbProgressBar, NbQuickAmounts],
   template: `
-    <fieldset>
+    <fieldset class="min-w-0">
       <legend class="mb-3 text-sm font-semibold">Escolha um ícone para sua caixinha</legend>
-      <div class="-mx-5 flex gap-4 overflow-x-auto px-5 pb-2">
+      <div class="grid grid-cols-4 justify-items-center gap-y-4">
         @for (o of icones; track o.id) {
           <button nb-icon-option [icone]="o.icone" [rotulo]="o.rotulo" [selecionado]="icone() === o.id" (click)="icone.set(o.id)"></button>
         }
@@ -43,8 +42,9 @@ const MAX_NOME = 40;
     </nb-form-field>
     <nb-quick-amounts class="mt-3" (somar)="meta.set(meta() + $event)" />
 
-    <nb-form-field class="mt-5" rotulo="Prazo para realizar">
-      <nb-month-select [(valor)]="prazo" [de]="hoje()" [ate]="limite()" />
+    <nb-form-field class="mt-5" rotulo="Prazo para realizar" [erro]="erroPrazo()">
+      <input nbInput type="date" [min]="hoje()" [max]="limite()" [value]="prazo()"
+        (change)="prazo.set($any($event.target).value)" (blur)="prazoTocado.set(true)" />
     </nb-form-field>
 
     <section class="mt-6 rounded-card bg-brand-light/60 p-5" aria-live="polite" aria-label="Plano sugerido">
@@ -74,7 +74,8 @@ export class NbCaixinhaForm {
   readonly inicial = input<DadosCaixinha | null>(null);
   /** Saldo atual, para o sugerido ao editar. Zero ao criar. */
   readonly saldoCentavos = input(0);
-  readonly hoje = input<Mes>(mesAtual());
+  /** YYYY-MM-DD; o prazo não pode ser antes disto. */
+  readonly hoje = input(hojeISO());
   readonly salvando = input(false);
   readonly erro = input<string | null>(null);
   readonly salvar = output<DadosCaixinha>();
@@ -84,16 +85,24 @@ export class NbCaixinhaForm {
   protected readonly icone = linkedSignal<IconeCaixinha>(() => this.inicial()?.icone ?? 'aparelho');
   protected readonly nome = linkedSignal(() => this.inicial()?.nome ?? '');
   protected readonly meta = linkedSignal(() => this.inicial()?.metaCentavos ?? 0);
-  protected readonly prazo = linkedSignal<Mes>(() => this.inicial()?.prazo ?? somarMeses(this.hoje(), 6));
+  protected readonly prazo = linkedSignal(() => this.inicial()?.prazo ?? somarMesesISO(this.hoje(), 6));
   protected readonly nomeTocado = signal(false);
+  protected readonly prazoTocado = signal(false);
 
-  protected readonly limite = computed(() => somarMeses(this.hoje(), 120));
+  protected readonly limite = computed(() => somarMesesISO(this.hoje(), 120));
   private readonly nomeOk = computed(() => this.nome().trim().length > 0);
   protected readonly erroNome = computed(() => (this.nomeTocado() && !this.nomeOk() ? 'Dê um nome para a caixinha.' : null));
-  protected readonly valido = computed(() => this.nomeOk() && this.meta() > 0);
+  private readonly prazoOk = computed(() => /^\d{4}-\d{2}-\d{2}$/.test(this.prazo()) && this.prazo() >= this.hoje() && this.prazo() <= this.limite());
+  protected readonly erroPrazo = computed(() => {
+    if (this.prazoOk() || (!this.prazoTocado() && this.prazo() !== '')) return null;
+    return this.prazo() > this.limite()
+      ? `Escolha uma data até ${formatarData(this.limite())}.`
+      : `Escolha uma data a partir de hoje (${formatarData(this.hoje())}).`;
+  });
+  protected readonly valido = computed(() => this.nomeOk() && this.meta() > 0 && this.prazoOk());
 
   protected readonly sugestao = computed(() => {
-    if (this.meta() <= 0) return null;
+    if (this.meta() <= 0 || !this.prazoOk()) return null;
     const c = calcularMeta({ metaCentavos: this.meta(), saldoCentavos: this.saldoCentavos(), prazo: this.prazo() }, this.hoje());
     if (c.sugeridoMensalCentavos === null) return null;
     return { valor: formatBRL(c.sugeridoMensalCentavos), meses: c.mesesRestantes, progresso: c.progresso };

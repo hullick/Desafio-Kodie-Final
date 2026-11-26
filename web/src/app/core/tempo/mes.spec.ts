@@ -1,4 +1,5 @@
 import {
+  formatarData, somarMesesISO,
   compararMes, hojeISO, intervaloDoMes, mesAtual, mesDeISO, mesesInclusivos, nomeMes,
   rotuloDia, rotuloMes, rotuloMesCurto, somarMeses, ultimoDiaISO,
 } from './mes';
@@ -42,5 +43,16 @@ describe('mes', () => {
     expect(rotuloDia('2026-11-24', '2026-11-25')).toBe('Ontem');
     expect(rotuloDia('2026-12-31', '2027-01-01')).toBe('Ontem');
     expect(rotuloDia('2026-11-05', '2026-11-25')).toBe('5 de nov.');
+  });
+
+  it('formata data como dd/mm/aaaa', () => {
+    expect(formatarData('2027-03-05')).toBe('05/03/2027');
+  });
+
+  it('soma meses numa data ISO, limitando ao fim do mês', () => {
+    expect(somarMesesISO('2026-11-25', 6)).toBe('2027-05-25');
+    expect(somarMesesISO('2026-08-31', 1)).toBe('2026-09-30');
+    expect(somarMesesISO('2028-02-29', 12)).toBe('2029-02-28');
+    expect(somarMesesISO('2026-11-25', 120)).toBe('2036-11-25');
   });
 });

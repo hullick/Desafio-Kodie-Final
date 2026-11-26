@@ -8,7 +8,7 @@ import { DadosAlterados } from '../../core/estado/dados-alterados';
 import { MovimentoSheet } from '../../core/estado/sheets';
 import { ToastService } from '../../core/estado/toast';
 import { formatBRL } from '../../core/formatacao/dinheiro';
-import { hojeISO, mesAtual } from '../../core/tempo/mes';
+import { hojeISO } from '../../core/tempo/mes';
 import { paraCaixinhaVM, paraMovimentoVM } from '../compartilhado/mapeadores';
 
 /** Monta o detalhe da caixinha: anel, cards, histórico, guardar/retirar, editar/excluir (R-04.4, R-04.7). */
@@ -26,7 +26,7 @@ export class CaixinhaDetalheFacade {
     async ({ id }) => {
       const [c, movs] = await Promise.all([this.repo.obter(id), this.repo.movimentos(id)]);
       const hoje = hojeISO();
-      return { caixinha: paraCaixinhaVM(c, mesAtual()), movimentos: movs.map((m) => paraMovimentoVM(m, hoje)) };
+      return { caixinha: paraCaixinhaVM(c, hoje), movimentos: movs.map((m) => paraMovimentoVM(m, hoje)) };
     },
   );
   readonly vm = this.dados.valor;

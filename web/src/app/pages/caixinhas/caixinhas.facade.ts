@@ -4,7 +4,7 @@ import { carregavel } from '../../core/estado/carregavel';
 import { DadosAlterados } from '../../core/estado/dados-alterados';
 import { Preferencias } from '../../core/estado/preferencias';
 import { MovimentoSheet } from '../../core/estado/sheets';
-import { mesAtual } from '../../core/tempo/mes';
+import { hojeISO } from '../../core/tempo/mes';
 import { paraCaixinhaVM } from '../compartilhado/mapeadores';
 
 /** Monta a lista de caixinhas: total, em andamento (prazo mais próximo) e atingidas (R-04.1). */
@@ -18,7 +18,7 @@ export class CaixinhasFacade {
   private readonly dados = carregavel(
     () => this.alterados.versao(),
     async () => {
-      const hoje = mesAtual();
+      const hoje = hojeISO();
       const todas = (await this.repo.listar()).map((c) => paraCaixinhaVM(c, hoje));
       return {
         totalCentavos: todas.reduce((a, c) => a + c.guardadoCentavos, 0),

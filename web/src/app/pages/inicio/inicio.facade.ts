@@ -7,7 +7,7 @@ import { DadosAlterados } from '../../core/estado/dados-alterados';
 import { Preferencias } from '../../core/estado/preferencias';
 import { LancamentoSheet } from '../../core/estado/sheets';
 import { primeiroNome } from '../../core/formatacao/texto';
-import { hojeISO, mesAtual } from '../../core/tempo/mes';
+import { hojeISO } from '../../core/tempo/mes';
 import { paraCaixinhaVM, paraFatiasVM, paraTransacaoVM } from '../compartilhado/mapeadores';
 import { mesNavegavel } from '../compartilhado/mes-navegavel';
 
@@ -35,14 +35,13 @@ export class InicioFacade {
         this.perfil.obter(), this.resumo.resumoDoMes(mes), this.lancamentos.listarDoMes(mes), this.caixinhas.listar(),
       ]);
       const hoje = hojeISO();
-      const atual = mesAtual();
       return {
         nome: primeiroNome(perfil.nome),
         saldo: resumo.saldo,
         entradas: resumo.entradas,
         gastos: resumo.gastos,
         fatias: paraFatiasVM(resumo.porCategoria),
-        caixinhas: caixinhas.map((c) => paraCaixinhaVM(c, atual)).filter((c) => c.estado === 'ativa').slice(0, CAIXINHAS_NO_PAINEL),
+        caixinhas: caixinhas.map((c) => paraCaixinhaVM(c, hoje)).filter((c) => c.estado === 'ativa').slice(0, CAIXINHAS_NO_PAINEL),
         ultimos: [{ rotulo: '', itens: lancs.slice(0, ULTIMOS).map((l) => paraTransacaoVM(l, hoje)) }].filter((g) => g.itens.length),
       };
     },
