@@ -1,0 +1,21 @@
+{
+  "name": "nubanko",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Raiz do monorepo: Netlify Functions (API) e ferramentas. O app Angular fica em web/.",
+  "scripts": {
+    "dev": "netlify dev",
+    "build": "npm ci --prefix web && npm run build --prefix web"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@netlify/functions": "^6.1.2",
+    "@types/pg": "^8.23.1",
+    "netlify-cli": "^27.20.1",
+    "typescript": "~6.0.2"
+  }
+}

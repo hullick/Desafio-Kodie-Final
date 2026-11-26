@@ -1,0 +1,111 @@
+# Ambiente local do NuBanko. Guia: DESENVOLVIMENTO.md, seção "Ambiente com Docker Compose".
+#
+#   cp .env.example .env
+#   docker compose up -d          → app em http://localhost:8888
+#   docker compose --profile test run --rm dbtest
+#
+# Produção não usa este arquivo: lá são Netlify (front + functions) e Netlify DB.
+
+name: nubanko
+
+x-segredos-db: &segredos-db
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (cp .env.example .env)}
+  NUBANKO_OWNER_PASSWORD: ${NUBANKO_OWNER_PASSWORD:?defina NUBANKO_OWNER_PASSWORD no .env}
+  NUBANKO_APP_PASSWORD: ${NUBANKO_APP_PASSWORD:?defina NUBANKO_APP_PASSWORD no .env}
+
+services:
+  # Postgres 17 (mesma versão principal do Netlify DB), com pgTAP para os testes.
+  db:
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile
+    environment:
+      <<: *segredos-db
+      POSTGRES_DB: nubanko
+      TZ: America/Sao_Paulo
+    ports:
+      - "127.0.0.1:${DB_PORTA:-54322}:5432"
+    volumes:
+      - nubanko-db:/var/lib/postgresql/data
+      - ./docker/db/00_papeis.sh:/docker-entrypoint-initdb.d/00_papeis.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nubanko"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks: [nubanko]
+
+  # Aplica db/migrations/*.sql que ainda não foram aplicadas e encerra.
+  migrate:
+    image: postgres:17
+    entrypoint: ["/migrate.sh"]
+    environment:
+      DATABASE_URL_MIGRACOES: postgresql://nubanko_owner:${NUBANKO_OWNER_PASSWORD:?defina NUBANKO_OWNER_PASSWORD no .env}@db/nubanko
+    volumes:
+      - ./docker/migrate/migrate.sh:/migrate.sh:ro
+      - ./db/migrations:/migrations:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks: [nubanko]
+
+  # Caixa de e-mail falsa: confirmação de cadastro e recuperação de senha.
+  mail:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:${MAIL_PORTA:-8025}:8025"
+    networks: [nubanko]
+
+  # netlify dev: Angular (ng serve) + Netlify Functions + redirects em um só endereço.
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://nubanko_app:${NUBANKO_APP_PASSWORD:?defina NUBANKO_APP_PASSWORD no .env}@db/nubanko
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      TZ: America/Sao_Paulo
+    ports:
+      - "127.0.0.1:${APP_PORTA:-8888}:8888"
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+      - web-node-modules:/app/web/node_modules
+      - web-angular-cache:/app/web/.angular
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      mail:
+        condition: service_started
+    networks: [nubanko]
+
+  # Testes de banco (pgTAP). Recria o banco nubanko_teste a cada execução.
+  dbtest:
+    profiles: [test]
+    build:
+      context: .
+      dockerfile: docker/pgtap/Dockerfile
+    environment:
+      <<: *segredos-db
+    working_dir: /repo
+    volumes:
+      - ./db:/repo/db:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [nubanko]
+
+networks:
+  nubanko:
+    name: nubanko
+
+volumes:
+  nubanko-db:
+    name: nubanko-db
+  app-node-modules:
+  web-node-modules:
+  web-angular-cache:
