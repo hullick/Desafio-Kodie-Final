@@ -21,7 +21,7 @@ const ESTADO: Record<CaixinhaCardVM['estado'], string> = {
   template: `
     <div class="flex flex-col items-center text-center">
       <nb-icon-tile [icone]="c().icone" tamanho="xl" />
-      <h1 class="mt-3 font-display text-2xl font-bold">{{ c().nome }}</h1>
+      <h2 class="mt-3 font-display text-2xl font-bold">{{ c().nome }}</h2>
       <nb-badge class="mt-2" [variante]="c().estado === 'atingida' ? 'ouro' : 'marca'">{{ estado() }} • {{ pct() }} concluída</nb-badge>
     </div>
 

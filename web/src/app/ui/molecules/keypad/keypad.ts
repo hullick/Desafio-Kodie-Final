@@ -13,7 +13,8 @@ const TECLAS: readonly Tecla[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '
   imports: [NbIcon],
   template: `
     @for (t of teclas; track t) {
-      <button type="button" class="min-h-14 rounded-box font-display text-2xl font-semibold text-ink transition hover:bg-canvas active:bg-brand-light"
+      <button type="button" class="rounded-box font-display text-2xl font-semibold text-ink transition hover:bg-canvas active:bg-brand-light"
+        [class.min-h-12]="compacto()" [class.min-h-14]="!compacto()"
         [attr.aria-label]="t === 'apagar' ? 'Apagar' : null" (click)="tecla.emit(t)">
         @if (t === 'apagar') { <nb-icon nome="delete" [tamanho]="26" /> } @else { {{ t }} }
       </button>
@@ -28,6 +29,8 @@ const TECLAS: readonly Tecla[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '
 })
 export class NbKeypad {
   readonly capturarTeclado = input(false);
+  /** Teclas mais baixas, para caber com o botão de salvar em telas de 740 px (U-02.3). */
+  readonly compacto = input(false);
   readonly tecla = output<Tecla>();
   protected readonly teclas = TECLAS;
 

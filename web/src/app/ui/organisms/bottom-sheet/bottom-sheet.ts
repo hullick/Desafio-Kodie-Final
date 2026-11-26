@@ -9,8 +9,8 @@ import { AfterViewInit, Component, ElementRef, OnDestroy, inject, input, output 
   template: `
     <div class="absolute inset-0 bg-ink/40" aria-hidden="true" (click)="fechar.emit()"></div>
     <section role="dialog" aria-modal="true" [attr.aria-label]="rotulo()" tabindex="-1"
-      class="relative mx-auto max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-card bg-surface px-5 pb-6 pt-3 shadow-n2 outline-none">
-      <div class="mx-auto mb-3 h-1.5 w-10 rounded-full bg-line" aria-hidden="true"></div>
+      class="relative mx-auto max-h-[97dvh] w-full max-w-md overflow-y-auto rounded-t-card bg-surface px-5 pt-3 shadow-n2 outline-none">
+      <div class="mx-auto mb-2 h-1.5 w-10 rounded-full bg-line" aria-hidden="true"></div>
       <ng-content />
     </section>
   `,
