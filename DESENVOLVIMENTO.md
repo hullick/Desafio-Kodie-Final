@@ -14,6 +14,7 @@ Tudo o que você precisa para rodar, entender e mudar o app. Leia de cima para b
 - [10. Git, commits e registro de IA](#10-git-commits-e-registro-de-ia)
 - [11. Decisões já tomadas](#11-decisões-já-tomadas)
 - [12. Problemas comuns](#12-problemas-comuns)
+- [13. Ambiente com Docker Compose](#13-ambiente-com-docker-compose)
 
 **O que é o NuBanko:** um app (PWA) de controle financeiro para jovens de 18 a 24 anos no primeiro salário ou estágio. Três funções: registrar gastos e entradas em poucos toques, juntar dinheiro em **caixinhas** (metas) e ver o **painel do mês**.
 
@@ -47,6 +48,8 @@ Abra **http://localhost:4200**. O app recarrega sozinho quando você salva um ar
 
 **Ver como celular no computador:** abra as DevTools (F12) e ligue a visualização de dispositivo com largura **360 px** e altura **740 px**. Esse é o aparelho de referência das specs.
 
+**Ambiente completo (banco, API e e-mail):** use o Docker Compose. Veja a [seção 13](#13-ambiente-com-docker-compose). O `npm start` acima continua valendo para trabalhar só nas telas.
+
 **Login:** o app abre **já logado** como a Lari, a persona, com dados de exemplo iguais aos dos mockups (saldo de R$ 642,30). Se sair, entre com `lari@exemplo.com` e **qualquer** senha. Os dados ficam em memória: recarregar a página volta tudo ao início.
 
 ---
@@ -79,7 +82,7 @@ Rode dentro de `web/`.
 
 | Falta | Onde está planejado |
 |-------|---------------------|
-| Backend na Netlify: Postgres (Netlify DB), Netlify Functions em `/api/*`, RLS e Docker Compose | Plan 00, tarefas 1 a 3; tarefa de API de cada plan 02 a 05 |
+| Backend na Netlify: `comUsuario`, guarda das functions e as APIs de domínio. O Docker Compose, o banco, as migrações e o pgTAP já existem (seção 13) | Plan 00, tarefa 3; tarefa de API de cada plan 02 a 05 |
 | Autenticação real com Better Auth (cadastro, confirmação por e-mail, recuperação de senha) | Plan 01 |
 | Hospedagem e CI/CD (deploy previews, homologação e produção na Netlify) | Spec 00, "Hospedagem e deploy"; plan próprio a escrever |
 | Testes E2E com Playwright (o pacote está instalado, mas ainda não há configuração) | Plan 00, tarefa 8 |
@@ -393,3 +396,102 @@ As divergências entre mockup e spec (sem CPF, sem biometria, sem notificações
 | Data aparece como `05/25/2027` no navegador | O campo de data nativo segue o idioma do navegador. Em pt-BR aparece `25/05/2027`. |
 | A página fica em branco por um instante | As rotas carregam sob demanda; é o carregamento do chunk. |
 | Mudei dados e eles sumiram ao recarregar | Os dados são em memória até a API da Netlify entrar. |
+
+---
+
+## 13. Ambiente com Docker Compose
+
+Sobe o ambiente inteiro (banco, migrações, e-mail, API e app) isolado numa rede própria, igual para todo o time. É o caminho para tudo que envolve backend. Para mexer só nas telas, o `npm start` da seção 1 basta.
+
+### 13.1 Primeira vez
+
+**Pré-requisito:** Docker com Compose v2 (`docker compose version`).
+
+```bash
+cp .env.example .env        # senhas de desenvolvimento; o .env não vai para o git
+docker compose up -d        # a primeira vez demora: build das imagens e npm ci
+./scripts/smoke.sh          # confere se está tudo de pé
+```
+
+Abra **http://localhost:8888**. É o `netlify dev`: o Angular, as Functions em `/api/*` e os redirects do `netlify.toml` no mesmo endereço, como em produção. O Angular recarrega sozinho quando você salva um arquivo.
+
+### 13.2 Serviços
+
+| Serviço | O que faz | Onde acessar |
+|---------|-----------|--------------|
+| `db` | Postgres 17 (mesma versão principal do Netlify DB), com pgTAP | `localhost:54322`, banco `nubanko` |
+| `migrate` | Aplica as migrações novas de `db/migrations/` e encerra | `docker compose logs migrate` |
+| `mail` | Mailpit: caixa de e-mail falsa (confirmação de cadastro, senha) | http://localhost:8025 |
+| `app` | `netlify dev`: Angular + Functions + redirects | http://localhost:8888 |
+| `dbtest` (profile `test`) | Recria o banco `nubanko_teste` e roda os testes pgTAP | só sob demanda |
+
+As portas ficam presas a `127.0.0.1` (não aparecem na rede) e podem ser trocadas no `.env` (`DB_PORTA`, `APP_PORTA`, `MAIL_PORTA`).
+
+### 13.3 Papéis do banco
+
+| Papel | Uso | Pode |
+|-------|-----|------|
+| `postgres` | Administração local e runner de testes | Tudo. **Só existe localmente** |
+| `nubanko_owner` | Migrações | É dono dos schemas e das tabelas |
+| `nubanko_app` | As Functions (`DATABASE_URL`) | Só o que cada migração conceder. **Sem `BYPASSRLS`**, nunca dono de tabela |
+
+Toda query das functions roda como `nubanko_app`, dentro de uma transação com `app.user_id` definido (ver seção 5.5). É isso que faz o RLS valer.
+
+### 13.4 Comandos do dia a dia
+
+Rode na raiz do repositório.
+
+| Comando | Para quê |
+|---------|----------|
+| `docker compose up -d` | Sobe tudo (e aplica migrações novas) |
+| `docker compose ps` | Mostra o estado dos serviços |
+| `docker compose logs -f app` | Acompanha o `netlify dev` (erros de build e das functions aparecem aqui) |
+| `docker compose restart app` | Reinicia o app (necessário depois de mudar o `netlify.toml`) |
+| `docker compose up -d migrate` | Aplica uma migração que você acabou de criar |
+| `docker compose --profile test run --rm dbtest` | Roda todos os testes de banco num banco de teste novo |
+| `docker compose --profile test run --rm dbtest db/tests/00_rls_obrigatoria.test.sql` | Roda só um arquivo |
+| `docker compose exec db psql -U postgres -d nubanko` | Abre o `psql` como administrador |
+| `docker compose exec db psql "postgresql://nubanko_app:app-dev@localhost/nubanko"` | Abre o `psql` **como as functions** (útil para testar RLS) |
+| `./scripts/smoke.sh` | Confere banco, e-mail, API e app |
+| `docker compose down` | Para tudo e **mantém** os dados |
+| `docker compose down -v` | Para tudo e **apaga** banco e `node_modules` dos containers (recomeça do zero) |
+
+### 13.5 Criar uma migração
+
+1. Crie `db/migrations/AAAAMMDDHHMMSS_descricao.sql` (ex.: `20261201000200_lancamentos.sql`). O nome define a ordem, e o `migrate` recusa nomes fora desse padrão.
+2. Escreva o teste antes, em `db/tests/NN_assunto.test.sql`, dentro de `begin; select plan(n); ... select * from finish(); rollback;`.
+3. Toda tabela nova em `public` precisa de:
+   ```sql
+   alter table public.minha_tabela enable row level security;
+   alter table public.minha_tabela force row level security;
+   create policy dono on public.minha_tabela
+     using (user_id = app.usuario_id()) with check (user_id = app.usuario_id());
+   grant select, insert, update, delete on public.minha_tabela to nubanko_app;
+   ```
+   Se faltar o RLS, o teste `00_rls_obrigatoria` falha sozinho.
+4. Rode `docker compose --profile test run --rm dbtest` e depois `docker compose up -d migrate` para aplicar no banco de desenvolvimento.
+5. **Nunca edite uma migração já mergeada em `develop`**: ela já rodou em outros bancos. Crie outra que corrija.
+
+**Helpers dos testes** (`db/tests/_helpers.sql`):
+
+| Helper | Faz |
+|--------|-----|
+| `tests.autenticar_como(uid)` | Vira `nubanko_app` com `app.user_id = uid`, como uma requisição logada |
+| `tests.anonimo()` | Vira `nubanko_app` sem usuário, como uma requisição sem sessão |
+| `tests.resetar()` | Volta a ser `postgres` |
+| `tests.criar_usuario(email, nome?, aceite_versao?)` | Cria um usuário em `auth."user"` (a partir do plan 01) e devolve o id |
+
+### 13.6 Criar uma function
+
+Cada arquivo de `netlify/functions/*.mts` vira um endpoint, com a rota em `export const config = { path: '/api/...' }`. O `app` recarrega as functions sozinho. Exemplo pronto: `netlify/functions/saude.mts` (`GET /api/saude`). A conexão com o banco fica em `netlify/lib/db.ts`. Rotas `/api/*` sem function respondem `404` em JSON (`nao-encontrado.mts`), nunca o `index.html`.
+
+### 13.7 Problemas comuns
+
+| Sintoma | Causa e solução |
+|---------|-----------------|
+| `defina POSTGRES_PASSWORD no .env` | Falta o `.env`. Rode `cp .env.example .env`. |
+| `port is already allocated` | A porta já está em uso no seu computador. Troque `DB_PORTA`, `APP_PORTA` ou `MAIL_PORTA` no `.env`. |
+| `localhost:8888` não abre logo depois do `up` | Na primeira vez o `app` roda `npm ci`. Acompanhe com `docker compose logs -f app`. |
+| Mudei senhas no `.env` e o banco não aceita | O banco guarda as senhas da primeira subida. Use `docker compose down -v` para recriar (apaga os dados locais). |
+| Instalei um pacote e o `app` não enxerga | Os `node_modules` do container são separados dos do host. O `app` reinstala sozinho quando o `package-lock.json` muda: `docker compose restart app`. |
+| `migrate` falhou | Veja `docker compose logs migrate`. A migração com erro não fica registrada, então é só corrigir e rodar `docker compose up -d migrate` de novo. |

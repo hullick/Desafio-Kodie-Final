@@ -84,7 +84,7 @@ O **NuBanko** resolve isso com três coisas, e só três:
 | Login e cadastro (telas prontas, com sessão de demonstração) | 🟡 |
 | Backend na Netlify (Functions + Netlify DB) com regras de acesso por dono (RLS) | 🔜 |
 | Autenticação real com Better Auth | 🔜 |
-| Ambiente local com Docker Compose | 🔜 |
+| Ambiente local com Docker Compose (Postgres, migrações, pgTAP, Mailpit e `netlify dev`) | ✅ |
 | Testes E2E e de usabilidade com Playwright e axe | 🔜 |
 
 ✅ pronto · 🟡 pronto no front, aguardando backend · 🔜 planejado
