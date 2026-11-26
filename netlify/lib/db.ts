@@ -5,6 +5,12 @@ import pg from 'pg';
  * entre invocações "quentes". Conecta como nubanko_app (sem BYPASSRLS).
  * Em produção, DATABASE_URL é a URL *pooled* do Netlify DB (Neon), com TLS.
  */
+
+// `date` volta como 'YYYY-MM-DD' (sem fuso nem Date do JS) e `bigint` como number:
+// os valores em centavos cabem com folga (máx. 99.999.999 por linha).
+pg.types.setTypeParser(pg.types.builtins.DATE, (v) => v);
+pg.types.setTypeParser(pg.types.builtins.INT8, (v) => Number(v));
+
 const url = process.env['DATABASE_URL'];
 if (!url) {
   throw new Error('DATABASE_URL não definida');
