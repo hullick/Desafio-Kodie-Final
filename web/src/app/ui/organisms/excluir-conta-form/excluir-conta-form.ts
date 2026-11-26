@@ -15,7 +15,7 @@ export const PALAVRA_EXCLUIR = 'EXCLUIR';
   selector: 'nb-excluir-conta-form',
   imports: [NbButton, NbFormField, NbIcon, NbInput, NbPasswordInput],
   template: `
-    <section class="rounded-card bg-neg/10 p-5" aria-labelledby="titulo-aviso-exclusao">
+    <section class="rounded-card border-2 border-neg/40 bg-surface p-5" aria-labelledby="titulo-aviso-exclusao">
       <h2 id="titulo-aviso-exclusao" class="flex items-center gap-2 font-display text-lg font-bold text-neg-ink">
         <nb-icon nome="circle-alert" />Isso não pode ser desfeito
       </h2>

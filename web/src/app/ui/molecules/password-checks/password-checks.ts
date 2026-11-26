@@ -15,7 +15,7 @@ import { NbIcon } from '../../atoms/icon/icon';
     <ul class="flex flex-wrap gap-2" aria-live="polite">
       @for (item of itens(); track item.rotulo) {
         <li class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
-          [class]="item.ok ? 'bg-brand-light text-brand-ink' : 'bg-line text-muted'" [attr.data-ok]="item.ok">
+          [class]="item.ok ? 'bg-brand-light text-brand-ink' : 'bg-line text-ink/75'" [attr.data-ok]="item.ok">
           <nb-icon [nome]="item.ok ? 'circle-check' : 'circle'" [tamanho]="14" />
           {{ item.rotulo }}<span class="sr-only">{{ item.ok ? ': ok' : ': pendente' }}</span>
         </li>

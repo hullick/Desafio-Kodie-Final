@@ -76,6 +76,9 @@ services:
       SMTP_HOST: mail
       SMTP_PORT: "1025"
       EMAIL_REMETENTE: NuBanko <nao-responda@nubanko.local>
+      # Rate limit do login/cadastro (R-01.12). Desligue só para a suíte E2E, que cria várias
+      # contas do mesmo IP: NUBANKO_RATE_LIMIT=desligado docker compose up -d app
+      NUBANKO_RATE_LIMIT: ${NUBANKO_RATE_LIMIT:-ligado}
       TZ: America/Sao_Paulo
     ports:
       - "127.0.0.1:${APP_PORTA:-8888}:8888"
