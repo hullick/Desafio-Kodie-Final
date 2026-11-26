@@ -4,10 +4,16 @@
 create schema tests;
 grant usage on schema tests to nubanko_app;
 
--- Cria um usuário do Better Auth (tabela do plan 01) e devolve o id.
+-- Texto no formato cifrado (v1.<iv>.<cifra>) para os testes. O banco só confere o formato;
+-- cifrar de verdade é papel da function (netlify/lib/cripto.ts).
+create function tests.cifrado(sufixo text default 'teste') returns text
+  language sql immutable
+  as $$ select 'v1.AAAAAAAAAAAAAAAA.' || rpad(sufixo, 22, 'x') $$;
+
+-- Cria um usuário do Better Auth (o nome chega cifrado, como faz o hook do cadastro) e devolve o id.
 create function tests.criar_usuario(
   email text,
-  nome text default 'Teste',
+  nome text default tests.cifrado('nome'),
   aceite_versao text default '2026-11'
 ) returns text language plpgsql as $$
 declare

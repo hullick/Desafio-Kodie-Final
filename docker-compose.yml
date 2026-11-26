@@ -12,6 +12,7 @@ x-segredos-db: &segredos-db
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env (cp .env.example .env)}
   NUBANKO_OWNER_PASSWORD: ${NUBANKO_OWNER_PASSWORD:?defina NUBANKO_OWNER_PASSWORD no .env}
   NUBANKO_APP_PASSWORD: ${NUBANKO_APP_PASSWORD:?defina NUBANKO_APP_PASSWORD no .env}
+  NUBANKO_AUTH_PASSWORD: ${NUBANKO_AUTH_PASSWORD:?defina NUBANKO_AUTH_PASSWORD no .env}
 
 services:
   # Postgres 17 (mesma versão principal do Netlify DB), com pgTAP para os testes.
@@ -68,8 +69,13 @@ services:
     user: "${APP_UID:-1000}:${APP_GID:-1000}"
     environment:
       DATABASE_URL: postgresql://nubanko_app:${NUBANKO_APP_PASSWORD:?defina NUBANKO_APP_PASSWORD no .env}@db/nubanko
+      DATABASE_URL_AUTH: postgresql://nubanko_auth:${NUBANKO_AUTH_PASSWORD:?defina NUBANKO_AUTH_PASSWORD no .env}@db/nubanko
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?defina BETTER_AUTH_SECRET no .env}
+      BETTER_AUTH_URL: http://localhost:${APP_PORTA:-8888}
+      NUBANKO_CHAVE_DADOS: ${NUBANKO_CHAVE_DADOS:?defina NUBANKO_CHAVE_DADOS no .env}
       SMTP_HOST: mail
       SMTP_PORT: "1025"
+      EMAIL_REMETENTE: NuBanko <nao-responda@nubanko.local>
       TZ: America/Sao_Paulo
     ports:
       - "127.0.0.1:${APP_PORTA:-8888}:8888"
