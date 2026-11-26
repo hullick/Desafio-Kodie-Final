@@ -16,8 +16,8 @@ Fora: login social, biometria, CPF, "lembrar meu acesso" (a sessão já persiste
 | R-01.1 | O cadastro pede **nome** (como prefere ser chamada, 2 a 40 caracteres), **e-mail**, **senha**, **confirmação de senha** e **aceite** dos Termos e da Política de Privacidade. | resumo + mockup |
 | R-01.2 | A senha tem 8+ caracteres, 1 número e 1 símbolo, validada no front (indicador ao vivo) **e** no servidor (hook do Better Auth no cadastro, na redefinição e na troca de senha, usando a mesma função `checarSenha`). | mockup |
 | R-01.3 | Sem aceite, o botão de cadastro fica desabilitado. O aceite grava `aceite_politica_em` e `versao_politica` em `perfis`. | resumo (LGPD) |
-| R-01.4 | E-mail já cadastrado mostra uma mensagem neutra: "Se esse e-mail puder ser usado, você receberá um link". Não revela quais e-mails existem, nem na tela nem na resposta da API: um hook do servidor troca o erro de "usuário já existe" pela mesma resposta de sucesso. | proposta |
-| R-01.5 | O cadastro exige confirmação por e-mail antes do primeiro login. Localmente, o e-mail chega no Mailpit. | proposta |
+| R-01.4 | E-mail já cadastrado mostra "Já existe uma conta com esse e-mail. Entre ou recupere a senha." (API: `422`). Sem confirmação de e-mail (R-01.5), não há como responder igual para e-mail novo e existente, porque o novo já entra na conta; o rate limit do cadastro (R-01.12) limita o uso disso para descobrir e-mails. | time (substitui a mensagem neutra) |
+| R-01.5 | **Sem confirmação de e-mail**: o cadastro já entra na conta. | time (antes: confirmação obrigatória) |
 | R-01.6 | O login é por e-mail e senha. A sessão (cookie `HttpOnly` do Better Auth) persiste no aparelho até o logout ou a expiração, e é renovada enquanto a pessoa usa o app. | resumo |
 | R-01.7 | Erro de login mostra sempre "E-mail ou senha incorretos", sem dizer qual dos dois. | proposta |
 | R-01.8 | "Esqueci a senha" envia um link de redefinição. A nova senha segue R-01.2. | proposta: sem isso, quem esquece perde todos os dados |

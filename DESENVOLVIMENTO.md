@@ -36,21 +36,23 @@ Tudo o que você precisa para rodar, entender e mudar o app. Leia de cima para b
 
 **Pré-requisitos:** Node 26 e npm 11 (é o que o projeto usa hoje: `node -v`, `npm -v`).
 
+**App completo, com a API real:** suba o Docker Compose ([seção 13](#13-ambiente-com-docker-compose)) e abra **http://localhost:8888**. Crie uma conta em "Criar conta"; cada conta só vê os próprios dados.
+
+**Só as telas, sem backend (dados de demonstração):**
+
 ```bash
 cd web
 npm install
-npm start
+npm run start:demo
 ```
 
-Abra **http://localhost:4200**. O app recarrega sozinho quando você salva um arquivo.
+Abra **http://localhost:4200**. O app recarrega sozinho quando você salva um arquivo. (`npm start` sozinho usa a API real e precisa do compose.)
 
 **Ver no celular:** rode `npx ng serve --host 0.0.0.0` e abra `http://<ip-do-seu-computador>:4200` no celular, na mesma rede Wi-Fi.
 
 **Ver como celular no computador:** abra as DevTools (F12) e ligue a visualização de dispositivo com largura **360 px** e altura **740 px**. Esse é o aparelho de referência das specs.
 
-**Ambiente completo (banco, API e e-mail):** use o Docker Compose. Veja a [seção 13](#13-ambiente-com-docker-compose). O `npm start` acima continua valendo para trabalhar só nas telas.
-
-**Login:** o app abre **já logado** como a Lari, a persona, com dados de exemplo iguais aos dos mockups (saldo de R$ 642,30). Se sair, entre com `lari@exemplo.com` e **qualquer** senha. Os dados ficam em memória: recarregar a página volta tudo ao início.
+**Login na demonstração:** o `start:demo` abre **já logado** como a Lari, a persona, com dados de exemplo iguais aos dos mockups (saldo de R$ 642,30). Se sair, entre com `lari@exemplo.com` e **qualquer** senha. Os dados ficam em memória: recarregar a página volta tudo ao início.
 
 ---
 
@@ -72,21 +74,20 @@ Rode dentro de `web/`.
 
 ## 3. O que já existe e o que falta
 
-**Pronto (front completo com dados de demonstração):**
-- Início (painel do mês), Lançamentos ("Ver todos"), Caixinhas, Nova/Editar caixinha, Detalhe da caixinha, Perfil, Seus dados, Privacidade, Entrar e Cadastro.
-- Bottom sheet de novo/editar lançamento e de guardar/retirar, abertos de qualquer aba.
-- Guarda de rotas: sem sessão, vai para o login e volta para a página pedida depois.
-- 168 testes, cobertura de ~99% das linhas.
+**Pronto:**
+- Front: Início (painel do mês), Lançamentos ("Ver todos"), Caixinhas, Nova/Editar caixinha, Detalhe da caixinha, Perfil, Seus dados, Privacidade, Entrar e Cadastro; sheets de lançamento e de guardar/retirar.
+- API em `/api/*` (contrato em `docs/api/openapi.yaml`): Better Auth em `/api/auth/*` (cadastro sem confirmação de e-mail, login, sessão, saída, redefinição e troca de senha, exclusão de conta, rate limit) e as functions de lançamentos, resumo, caixinhas e perfil, todas com `comUsuario` + RLS.
+- Textos das pessoas cifrados no banco (seção 13.8).
+- Repositórios HTTP no front (`core/dados/http/`), com guarda de rota que consulta a sessão e interceptor que leva ao login quando ela expira.
+- Testes: pgTAP do banco, integração das functions e unidade/componente do front.
 
 **Ainda não existe:**
 
 | Falta | Onde está planejado |
 |-------|---------------------|
-| Backend na Netlify: `comUsuario`, guarda das functions e as APIs de domínio. O Docker Compose, o banco, as migrações e o pgTAP já existem (seção 13) | Plan 00, tarefa 3; tarefa de API de cada plan 02 a 05 |
-| Autenticação real com Better Auth (cadastro, confirmação por e-mail, recuperação de senha) | Plan 01 |
 | Hospedagem e CI/CD (deploy previews, homologação e produção na Netlify) | Spec 00, "Hospedagem e deploy"; plan próprio a escrever |
 | Testes E2E com Playwright (o pacote está instalado, mas ainda não há configuração) | Plan 00, tarefa 8 |
-| Alterar senha, Excluir conta e Esqueci a senha | Plans 01 e 05 (dependem do backend) |
+| Telas de Alterar senha, Excluir conta, Esqueci a senha e Nova senha. A API e os métodos do `SessaoRepositorio` já existem | Plans 01 e 05 |
 | Fechar o sheet com o botão voltar do Android (U-02.6). Hoje fecha com Esc e com toque no fundo. | Plan 02 |
 | Os 4 agentes e a matriz de rastreabilidade | Plan 00, tarefa 9 |
 
@@ -200,15 +201,20 @@ Exemplo: registrar um gasto.
 | `ToastService` | `mostrar('Gasto registrado')`; o toast some em 3 s. |
 | `Preferencias` | "Esconder valores" (o olho), salvo só no aparelho. |
 
-### 5.4 Repositórios: memória hoje, API da Netlify amanhã
+### 5.4 Repositórios: API real ou memória
 
 `core/dados/repositorios.ts` define **classes abstratas** (`LancamentosRepositorio`, `CaixinhasRepositorio`, `ResumoRepositorio`, `PerfilRepositorio`, `SessaoRepositorio`). Facades e guarda dependem só delas.
 
-Hoje, `proverDadosEmMemoria()` (em `app.config.ts`) liga essas classes às implementações de `core/dados/memoria/`, com os dados de `semente.ts`.
+Há duas implementações, escolhidas em `app.config.ts` por `environment.dados`:
 
-**Para trocar pela API:** crie as implementações HTTP (ex.: `core/dados/http/`, chamando `/api/*` com o `HttpClient`), uma função `proverDadosHttp()` e troque **uma linha** no `app.config.ts`. Nenhuma página ou componente muda. Os testes dos repositórios em memória servem de referência para o comportamento esperado (ordem, erros como `ErroCaixinha('saldo_insuficiente')`, que a API devolve como `409 { "erro": "saldo_insuficiente" }`).
+| | Onde | Quando |
+|---|---|---|
+| HTTP (`proverDadosHttp()`) | `core/dados/http/` | Padrão (`npm start`, build de produção). Chama `/api/*` com o `HttpClient`; o cookie de sessão vai sozinho. |
+| Memória (`proverDadosEmMemoria()`) | `core/dados/memoria/` | `npm run start:demo` e os testes de facade. Dados de `semente.ts`. |
 
-### 5.5 O backend (planejado)
+Erros da API chegam como `ErroApi { status, codigo, detalhes }` (`core/dados/http/erro-api.ts`). Os que a tela trata têm tipo próprio: `ErroCaixinha('saldo_insuficiente' | 'caixinha_com_saldo' | 'nao_encontrada')` e `ErroSessao('credenciais_invalidas' | 'email_em_uso' | 'senha_fraca' | ...)`. Um `401` numa rota de domínio (sessão expirou) passa pelo `sessaoExpiradaInterceptor`, que leva ao login com `?voltar=`.
+
+### 5.5 O backend
 
 A decisão está em `docs/adr/0001-backend-netlify.md` e o desenho, na spec 00.
 
@@ -225,6 +231,8 @@ Navegador ──HTTPS──▶ Netlify ─┬─ /            → web/dist/web/b
 - **Toda function de domínio usa `comUsuario`.** Um teste falha se alguma não usar.
 - **O RLS continua ligado** como segunda camada: mesmo que uma query esqueça o `where user_id`, o banco só devolve as linhas do usuário da transação.
 - **A API nunca aceita `user_id` no corpo**: o banco preenche com `app.usuario_id()`.
+- **Textos das pessoas são cifrados** antes do banco (seção 13.8), e o banco recusa texto em claro nessas colunas.
+- **Contrato:** `docs/api/openapi.yaml`, com todos os erros de cada rota. Um teste falha se uma rota ficar fora dele.
 - Localmente, `docker compose up` sobe `db` (Postgres 17), `migrate`, `mail` (Mailpit) e `app` (`netlify dev` em `localhost:8888`, que já inicia o Angular).
 
 ---
@@ -380,8 +388,10 @@ As divergências entre mockup e spec (sem CPF, sem biometria, sem notificações
 | No sheet, "Salvar" fica fixo no rodapé e o teclado é compacto (teclas de 48 px) | "Salvar" sempre visível em 360×740 (U-02.3) sem esconder o "apagar". |
 | Excluir pede uma segunda confirmação ("Excluir de vez") | Evita perda por toque acidental (H3/H5). |
 | `/privacidade` é pública | O link do cadastro precisa funcionar antes do login. |
-| Login de demonstração aceita qualquer senha para e-mails conhecidos | Só enquanto o Better Auth não entra (plan 01); nunca guarda a senha. |
-| Cadastro mostra mensagem neutra e não entra direto | Não revela se o e-mail existe (R-01.4) e exige confirmação por e-mail (R-01.5). |
+| Login de demonstração (`start:demo`) aceita qualquer senha para e-mails conhecidos | Só na demonstração em memória; nunca guarda a senha. |
+| **Sem confirmação de e-mail**: o cadastro já entra na conta | Decisão do time. Por isso o e-mail já cadastrado é informado (`422`), com rate limit no cadastro (R-01.4). |
+| Textos livres cifrados; valores em claro | Decisão do time: o banco continua somando e barrando retirada acima do saldo (R-00.8). |
+| O token da sessão nunca aparece no corpo das respostas | Fica só no cookie `HttpOnly`, fora do alcance de JavaScript. |
 
 ---
 
@@ -395,7 +405,8 @@ As divergências entre mockup e spec (sem CPF, sem biometria, sem notificações
 | Dados do facade não aparecem no teste | Faltou `await estabilizar()` depois de mudar algo. |
 | Data aparece como `05/25/2027` no navegador | O campo de data nativo segue o idioma do navegador. Em pt-BR aparece `25/05/2027`. |
 | A página fica em branco por um instante | As rotas carregam sob demanda; é o carregamento do chunk. |
-| Mudei dados e eles sumiram ao recarregar | Os dados são em memória até a API da Netlify entrar. |
+| Mudei dados e eles sumiram ao recarregar | Você está no `start:demo` (dados em memória). Use o compose para dados reais. |
+| `npm start` abre o login e nada funciona | Sem o compose não há API. Use `npm run start:demo` ou suba o compose. |
 
 ---
 
@@ -434,7 +445,8 @@ As portas ficam presas a `127.0.0.1` (não aparecem na rede) e podem ser trocada
 |-------|-----|------|
 | `postgres` | Administração local e runner de testes | Tudo. **Só existe localmente** |
 | `nubanko_owner` | Migrações | É dono dos schemas e das tabelas |
-| `nubanko_app` | As Functions (`DATABASE_URL`) | Só o que cada migração conceder. **Sem `BYPASSRLS`**, nunca dono de tabela |
+| `nubanko_app` | As Functions de domínio (`DATABASE_URL`) | Só o que cada migração conceder. **Sem `BYPASSRLS`**, nunca dono de tabela. Não lê o schema `auth` |
+| `nubanko_auth` | O Better Auth (`DATABASE_URL_AUTH`) | Só o schema `auth` (usuários, sessões, contas, tokens, rate limit) |
 
 Toda query das functions roda como `nubanko_app`, dentro de uma transação com `app.user_id` definido (ver seção 5.5). É isso que faz o RLS valer.
 
@@ -453,6 +465,8 @@ Rode na raiz do repositório.
 | `docker compose --profile test run --rm dbtest db/tests/00_rls_obrigatoria.test.sql` | Roda só um arquivo |
 | `docker compose exec db psql -U postgres -d nubanko` | Abre o `psql` como administrador |
 | `docker compose exec db psql "postgresql://nubanko_app:app-dev@localhost/nubanko"` | Abre o `psql` **como as functions** (útil para testar RLS) |
+| `docker compose exec app npm test` | Testes das functions (integração contra o banco e o Mailpit do compose) |
+| `npm run typecheck` | Checagem de tipos das functions (na raiz) |
 | `./scripts/smoke.sh` | Confere banco, e-mail, API e app |
 | `docker compose down` | Para tudo e **mantém** os dados |
 | `docker compose down -v` | Para tudo e **apaga** banco e `node_modules` dos containers (recomeça do zero) |
@@ -484,7 +498,26 @@ Rode na raiz do repositório.
 
 ### 13.6 Criar uma function
 
-Cada arquivo de `netlify/functions/*.mts` vira um endpoint, com a rota em `export const config = { path: '/api/...' }`. O `app` recarrega as functions sozinho. Exemplo pronto: `netlify/functions/saude.mts` (`GET /api/saude`). A conexão com o banco fica em `netlify/lib/db.ts`. Rotas `/api/*` sem function respondem `404` em JSON (`nao-encontrado.mts`), nunca o `index.html`.
+Cada arquivo de `netlify/functions/*.mts` vira um endpoint, com a rota em `export const config = { path: '/api/...' }`. O `app` recarrega as functions sozinho. Rotas `/api/*` sem function respondem `404` em JSON (`nao-encontrado.mts`), nunca o `index.html`.
+
+Modelo: `netlify/functions/lancamentos.mts`. O esqueleto de toda function de domínio:
+
+```ts
+export default tratar(async (req, ctx) => {             // erros viram { erro } com o status certo
+  const corpo = new Validador(await lerCorpo(req, ['nome']));  // recusa campos extras e user_id
+  const nome = corpo.texto('nome', 1, 40);
+  corpo.conferir();                                       // 400 dados_invalidos com detalhes
+  return comUsuario(req, async (db, usuarioId) => {       // 401 sem sessão; RLS ligado
+    const id = randomUUID();
+    await db.query('insert ... values ($1, $2)', [id, cifrar(usuarioId, `tabela.coluna:${id}`, nome)]);
+    return json({ id, nome }, 201);
+  });
+});
+```
+
+- **Nada de arquivo auxiliar dentro de `netlify/functions/`**: todo arquivo ali vira function. Helpers ficam em `netlify/lib/` e testes em `netlify/testes/`.
+- Toda rota nova entra no `docs/api/openapi.yaml`, com todos os erros; o teste `openapi.spec.ts` cobra.
+- Teste de integração com duas contas (`cadastrar()` de `netlify/testes/apoio.ts`): B recebe `404` nos recursos de A; sem sessão, `401`.
 
 ### 13.7 Problemas comuns
 
@@ -496,4 +529,24 @@ Cada arquivo de `netlify/functions/*.mts` vira um endpoint, com a rota em `expor
 | Mudei senhas no `.env` e o banco não aceita | O banco guarda as senhas da primeira subida. Use `docker compose down -v` para recriar (apaga os dados locais). |
 | Instalei um pacote e o `app` não enxerga | Os `node_modules` do container são separados dos do host. O `app` reinstala sozinho quando o `package-lock.json` muda: `docker compose restart app`. |
 | `Permission denied` no git ou arquivos com dono `root` no repositório (`.netlify/`, `web/dist/`, `netlify/`) | O `app` rodou com outro usuário: `APP_UID`/`APP_GID` do `.env` diferentes de `id -u`/`id -g`, ou volumes criados antes dessa regra existir. Corrija o `.env`, devolva os arquivos para você com `docker run --rm -v "$PWD":/r alpine chown -R "$(id -u):$(id -g)" /r` e recrie o app: `docker compose down`, `docker volume rm nubanko_app-node-modules nubanko_web-node-modules nubanko_web-angular-cache`, `docker compose up -d --build`. |
+| `role "nubanko_auth" does not exist` (ou o `app` não sobe com erro de banco) | O banco foi criado antes do papel existir. Crie à mão: `docker compose exec db psql -U postgres -c "create role nubanko_auth login nobypassrls password 'auth-dev'"` (a senha é a de `NUBANKO_AUTH_PASSWORD`), ou recrie o banco com `docker compose down -v` (apaga os dados locais). |
+| `defina NUBANKO_CHAVE_DADOS no .env` | O `.env` é anterior às variáveis novas. Copie de `.env.example` as linhas `NUBANKO_AUTH_PASSWORD`, `BETTER_AUTH_SECRET` e `NUBANKO_CHAVE_DADOS`. |
 | `migrate` falhou | Veja `docker compose logs migrate`. A migração com erro não fica registrada, então é só corrigir e rodar `docker compose up -d migrate` de novo. |
+
+### 13.8 Dados cifrados e a chave
+
+Os textos que a pessoa escreve ficam cifrados no banco (R-00.8):
+
+| Coluna | Contexto (AAD) |
+|--------|----------------|
+| `perfis.nome_cifrado` | `perfis.nome:<id do usuário>` |
+| `caixinhas.nome_cifrado` | `caixinhas.nome:<id da caixinha>` |
+| `lancamentos.descricao_cifrada` | `lancamentos.descricao:<id do lançamento>` |
+
+- **Como:** `netlify/lib/cripto.ts`. AES-256-GCM com IV aleatório; chave por pessoa = HKDF-SHA256 da chave mestra `NUBANKO_CHAVE_DADOS` com o id do usuário. Um texto copiado para outra pessoa, outra linha ou outra coluna não decifra.
+- **O banco se protege:** essas colunas têm `check (app.eh_cifrado(...))`. Gravar texto em claro falha no insert.
+- **Tamanho dos textos** (40 ou 60 caracteres) é validado na function, antes de cifrar: o banco só vê o texto cifrado.
+- **O nome do cadastro** é cifrado num hook do Better Auth, que gera o id do usuário antes de gravar. A trigger `criar_perfil` move o valor para `perfis` e deixa `auth.user.name` vazio.
+- **A chave:** 32 bytes em base64 (`openssl rand -base64 32`). Em produção, só nas variáveis de ambiente da Netlify, uma por ambiente. **Perder a chave é perder esses textos.** Guarde uma cópia num cofre de senhas do time.
+- **Trocar a chave:** o formato começa com `v1.`. Para rotacionar, crie a `v2` em `cripto.ts` (aceitando ler `v1` com a chave antiga), recifre as linhas com um script e só então remova a antiga.
+

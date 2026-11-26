@@ -6,12 +6,15 @@ import {
 
 /*
  * Contratos de acesso a dados. Os componentes e facades dependem SÓ destas classes abstratas
- * (usadas como tokens de DI). Hoje a implementação é em memória; o plan 00/01+ troca por Supabase
- * sem mexer em páginas ou componentes.
+ * (usadas como tokens de DI). Há duas implementações: HTTP (core/dados/http, a API real em
+ * /api/*, contrato em docs/api/openapi.yaml) e em memória (core/dados/memoria, demonstração e
+ * testes). A escolha fica em app.config.ts, via environment.dados.
  */
 
 export abstract class LancamentosRepositorio {
   abstract listarDoMes(m: Mes): Promise<Lancamento[]>;
+  /** Os `limite` mais recentes do mês ("Últimos lançamentos" do Início, R-03.6). */
+  abstract ultimos(m: Mes, limite: number): Promise<Lancamento[]>;
   abstract obter(id: string): Promise<Lancamento>;
   abstract criar(dados: NovoLancamento): Promise<Lancamento>;
   abstract atualizar(id: string, dados: NovoLancamento): Promise<Lancamento>;
@@ -51,18 +54,44 @@ export interface NovaConta {
   readonly senha: string;
 }
 
-/** Sessão do usuário (spec 01). Hoje em memória; o plan 01 troca pelo Supabase Auth. */
+/** Sessão do usuário (spec 01 e spec 05), sobre o Better Auth em /api/auth/*. */
 export abstract class SessaoRepositorio {
   abstract readonly autenticado: Signal<boolean>;
+  /**
+   * Consulta a sessão no servidor (cookie HttpOnly) e atualiza `autenticado`. A primeira chamada
+   * vai à rede; as seguintes reaproveitam o resultado até entrar, sair ou a sessão expirar.
+   */
+  abstract verificar(): Promise<boolean>;
   /** Rejeita com ErroSessao('credenciais_invalidas') sem dizer qual campo errou (R-01.7). */
   abstract entrar(email: string, senha: string): Promise<void>;
-  /** Não entra na conta: exige confirmação por e-mail (R-01.5). */
+  /** Cria a conta e já entra nela (sem confirmação de e-mail). */
   abstract cadastrar(conta: NovaConta): Promise<void>;
   abstract sair(): Promise<void>;
+  /** "Esqueci a senha": resposta sempre neutra (R-01.8). */
+  abstract pedirRedefinicao(email: string): Promise<void>;
+  /** Nova senha com o token do link do e-mail. Encerra as sessões da conta. */
+  abstract redefinirSenha(token: string, novaSenha: string): Promise<void>;
+  /** Troca a senha conferindo a atual e encerra os outros aparelhos (R-05.3). */
+  abstract alterarSenha(atual: string, nova: string): Promise<void>;
+  /** Apaga a conta e todos os dados, de forma definitiva (R-05.6). */
+  abstract excluirConta(senha: string): Promise<void>;
+  /** A API respondeu 401 (sessão expirou ou foi encerrada em outro lugar): esquece a sessão local. */
+  abstract encerrarLocalmente(): void;
 }
 
+export type CodigoErroSessao =
+  | 'credenciais_invalidas'
+  | 'email_em_uso'
+  | 'senha_fraca'
+  | 'nome_invalido'
+  | 'aceite_obrigatorio'
+  | 'senha_atual_incorreta'
+  | 'token_invalido'
+  | 'muitas_tentativas'
+  | 'falha';
+
 export class ErroSessao extends Error {
-  constructor(readonly codigo: 'credenciais_invalidas') {
+  constructor(readonly codigo: CodigoErroSessao) {
     super(codigo);
   }
 }
