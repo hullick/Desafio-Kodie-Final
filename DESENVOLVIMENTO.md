@@ -308,7 +308,24 @@ expect(f.vm()!.caixinha.nome).toBe('Celular novo');
 - `master`: produção. Só recebe merge de `test`.
 - `test`: homologação. Recebe merge de `develop`.
 - `develop`: integração. **Toda branch de trabalho sai dela e volta para ela.**
-- Branches de trabalho: `feature/<spec>-<assunto>` (ex.: `feature/02-teclado-numerico`) ou `fix/<assunto>`.
+- Branches de trabalho: `feature/<spec>-<assunto>` (ex.: `feature/02-teclado-numerico`) ou `fix/<spec>-<assunto>`.
+
+> **Regra do time: uma branch por feature.** Cada funcionalidade ou correção tem a **sua** branch, criada a partir de `develop`. Não junte assuntos diferentes numa branch só, e **nunca** commite direto em `master`, `test` ou `develop`.
+
+**Passo a passo de uma feature:**
+
+```bash
+git checkout develop && git pull                  # 1. parta do develop atualizado
+git checkout -b feature/04-fechar-meta            # 2. uma branch só para este assunto
+# ... código + testes, commits pequenos ...
+npx ng test --watch=false --coverage && npm run build   # 3. tudo verde (dentro de web/)
+git push -u origin feature/04-fechar-meta         # 4. abra o PR para develop
+```
+
+5. O PR vai para `develop` e entra com merge `--no-ff`, para a feature aparecer como um bloco no histórico.
+6. Quando o time quiser homologar, `develop` vai para `test`. Depois de validado, `test` vai para `master`.
+
+Apareceu outro assunto no meio do caminho? Abra **outra** branch a partir de `develop`.
 
 **Commits:** em português, no imperativo, com o tipo e o ID do requisito quando houver:
 
