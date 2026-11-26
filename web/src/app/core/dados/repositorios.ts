@@ -1,3 +1,4 @@
+import { Signal } from '@angular/core';
 import { Mes } from '../tempo/mes';
 import {
   Caixinha, DadosCaixinha, Lancamento, MovimentoCaixinha, NovoLancamento, NovoMovimento, Perfil, ResumoMes,
@@ -40,6 +41,28 @@ export type CodigoErroCaixinha = 'saldo_insuficiente' | 'caixinha_com_saldo' | '
 
 export class ErroCaixinha extends Error {
   constructor(readonly codigo: CodigoErroCaixinha) {
+    super(codigo);
+  }
+}
+
+export interface NovaConta {
+  readonly nome: string;
+  readonly email: string;
+  readonly senha: string;
+}
+
+/** Sessão do usuário (spec 01). Hoje em memória; o plan 01 troca pelo Supabase Auth. */
+export abstract class SessaoRepositorio {
+  abstract readonly autenticado: Signal<boolean>;
+  /** Rejeita com ErroSessao('credenciais_invalidas') sem dizer qual campo errou (R-01.7). */
+  abstract entrar(email: string, senha: string): Promise<void>;
+  /** Não entra na conta: exige confirmação por e-mail (R-01.5). */
+  abstract cadastrar(conta: NovaConta): Promise<void>;
+  abstract sair(): Promise<void>;
+}
+
+export class ErroSessao extends Error {
+  constructor(readonly codigo: 'credenciais_invalidas') {
     super(codigo);
   }
 }
