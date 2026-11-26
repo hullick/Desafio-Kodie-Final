@@ -23,7 +23,7 @@ Fora: recorrência, parcelamento, importação, categorização automática, ane
 |----|-----------|--------|
 | R-02.1 | O "+" central abre um bottom sheet de novo lançamento a partir de qualquer aba. | resumo |
 | R-02.2 | O seletor Gasto/Entrada vem em **Gasto** por padrão. Trocar o tipo troca os chips de categoria. | proposta: gasto é o caso mais frequente |
-| R-02.3 | O valor é digitado num teclado numérico próprio que preenche da direita para a esquerda, em centavos ("1", "2", "5" vira R$ 1,25). Tem backspace. O máximo é R$ 999.999,99. | mockup + proposta |
+| R-02.3 | O valor é digitado num teclado numérico próprio que preenche da direita para a esquerda, em centavos ("1", "2", "5" vira R$ 1,25). Tem backspace e a tecla "00" no lugar da vírgula do mockup, que não tem efeito nesse modo de entrada. O máximo é R$ 999.999,99. | mockup + proposta |
 | R-02.4 | É obrigatório escolher uma categoria. Nenhuma vem pré-selecionada. | proposta: pré-seleção gera dado errado silencioso |
 | R-02.5 | A descrição é opcional, com até 60 caracteres. | resumo |
 | R-02.6 | A data vem como "Hoje". Pode mudar para Ontem ou outra data do seletor, mas não para uma data futura. | proposta |
