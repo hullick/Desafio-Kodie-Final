@@ -83,7 +83,11 @@ describe('/api/auth: sessão', () => {
   it('get-session devolve a sessão e sign-out a encerra', async () => {
     const c = await cadastrar();
     const s = await chamarAuth('/get-session', undefined, c.cookie, 'GET');
-    expect(((await s.json()) as { user: { id: string } }).user.id).toBe(c.id);
+    const sessao = (await s.json()) as { user: { id: string; name: string }; session: Record<string, unknown> };
+    expect(sessao.user.id).toBe(c.id);
+    expect(sessao.user.name).toBe('');
+    expect(sessao.session['token']).toBeUndefined();
+    expect(sessao.session['expiresAt']).toBeTruthy();
     const out = await chamarAuth('/sign-out', {}, c.cookie);
     expect(out.status).toBe(200);
     const depois = await chamarAuth('/get-session', undefined, c.cookie, 'GET');

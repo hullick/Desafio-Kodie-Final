@@ -126,6 +126,12 @@ export const auth = betterAuth({
     // HttpOnly, fora do alcance de JavaScript; (2) o cadastro traria o nome cifrado (o valor
     // antes da trigger), então devolve vazio como as outras rotas. O nome vem de GET /api/perfil.
     after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === '/get-session') {
+        const s = ctx.context.returned as { session?: Record<string, unknown>; user?: Record<string, unknown> } | null;
+        if (!s || typeof s !== 'object' || !s.session) return;
+        const { token: _t, ...sessao } = s.session;
+        return ctx.json({ ...s, session: sessao });
+      }
       if (!ROTAS_COM_TOKEN.has(ctx.path)) return;
       const r = ctx.context.returned as { token?: unknown; user?: Record<string, unknown> } | undefined;
       if (!r || typeof r !== 'object' || !r.user) return;
