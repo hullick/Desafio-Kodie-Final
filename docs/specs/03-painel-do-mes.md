@@ -12,7 +12,7 @@ Para o mês M do usuário:
 - **Guardado líquido** = soma de `guardar` − soma de `retirar` dos movimentos de caixinha em M
 - **Saldo do mês** = Entradas − Gastos − Guardado líquido
 
-Guardar não é gasto: não aparece na rosca nem em "Gastos". O saldo pode ficar negativo e, nesse caso, é exibido em vermelho, sem bloquear nada. Os cálculos rodam numa view ou RPC no banco (`resumo_mes(ano, mes)`) com RLS, e a lógica é espelhada em funções puras testadas *(proposta)*.
+Guardar não é gasto: não aparece na rosca nem em "Gastos". O saldo pode ficar negativo e, nesse caso, é exibido em vermelho, sem bloquear nada. Os cálculos rodam numa função no banco (`resumo_mes(ano, mes)`), com RLS, exposta pelo endpoint `GET /api/resumo`, e a lógica é espelhada em funções puras testadas *(proposta)*.
 
 ## Requisitos
 
