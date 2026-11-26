@@ -38,8 +38,19 @@ export async function renderizar<T>(
       return achado;
     },
     qs: <E extends Element>(s: string) => Array.from(el.querySelectorAll<E>(s)),
-    texto: () => el.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+    texto: () => textoVisivel(el),
   };
+}
+
+/**
+ * Junta os nós de texto com espaço, como um leitor de tela os anunciaria.
+ * `textContent` cola elementos vizinhos ("Entradas" + "R$ 1,00" vira "EntradasR$ 1,00").
+ */
+export function textoVisivel(raiz: Node): string {
+  const partes: string[] = [];
+  const andador = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+  for (let n = andador.nextNode(); n; n = andador.nextNode()) partes.push(n.textContent ?? '');
+  return partes.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 /** Normaliza NBSP e espaços para comparar textos com valores monetários. */
