@@ -71,6 +71,13 @@ describe('/api/lancamentos', () => {
     expect(intacto.status).toBe(200);
   });
 
+  it('caminhos com sufixo não caem na lista (404)', async () => {
+    const id = '00000000-0000-4000-8000-000000000000';
+    for (const caminho of [`/api/lancamentos/${id}/index.html`, `/api/lancamentos/${id}.htm`, '/api/lancamentos/x/y']) {
+      expect((await chamar(handler, 'GET', caminho, { conta: b })).status, caminho).toBe(404);
+    }
+  });
+
   it('sem sessão, 401 em todas as rotas', async () => {
     const id = '00000000-0000-4000-8000-000000000000';
     const casos = [

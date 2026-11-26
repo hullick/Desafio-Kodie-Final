@@ -1,6 +1,6 @@
 import type { Config } from '@netlify/functions';
 import { comUsuario } from '../lib/com-usuario.ts';
-import { json, metodoNaoPermitido, tratar } from '../lib/http.ts';
+import { casarRota, ErroHttp, json, metodoNaoPermitido, tratar } from '../lib/http.ts';
 import { lerMes } from '../lib/validacao.ts';
 
 /**
@@ -17,6 +17,7 @@ interface ResumoBanco {
 }
 
 export default tratar(async (req: Request) => {
+  if (casarRota(req, 'resumo').id) throw new ErroHttp(404, 'nao_encontrado');
   if (req.method !== 'GET') return metodoNaoPermitido(['GET']);
   const { ano, mes } = lerMes(new URL(req.url));
   return comUsuario(req, async (db) => {

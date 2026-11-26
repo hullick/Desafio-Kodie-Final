@@ -130,9 +130,27 @@ export async function lerCorpo(req: Request, campos: readonly string[]): Promise
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Id de recurso da rota. Formato inválido responde como inexistente (404), sem dar pistas. */
-export function idDaRota(ctx: Context): string {
-  const id = ctx.params?.['id'];
-  if (!id || !UUID.test(id)) throw new ErroHttp(404, 'nao_encontrado');
-  return id.toLowerCase();
+export interface Rota {
+  /** Id do recurso (UUID), quando o caminho tem um. */
+  readonly id?: string;
+  /** Sub-recurso depois do id, ex.: 'movimentos'. */
+  readonly sub?: string;
+}
+
+/**
+ * Casa o caminho COMPLETO da requisição com `/api/<recurso>[/<id>[/<sub>]]`. Qualquer outra coisa
+ * (sufixo extra, id fora do formato UUID, sub-recurso não listado) responde 404.
+ *
+ * Não se usa `ctx.params`: quando uma function responde 404, o `netlify dev` tenta de novo com
+ * `.html`, `.htm` e `/index.html` no fim do caminho. Casando o caminho exato, essas tentativas
+ * também dão 404, em vez de cair por engano em outra rota da mesma function.
+ */
+export function casarRota(req: Request, recurso: string, subs: readonly string[] = []): Rota {
+  const partes = new URL(req.url).pathname.replace(/\/+$/, '').split('/').slice(1);
+  if (partes[0] !== 'api' || partes[1] !== recurso || partes.length > 4) throw new ErroHttp(404, 'nao_encontrado');
+  const [, , id, sub] = partes;
+  if (id === undefined) return {};
+  if (!UUID.test(id)) throw new ErroHttp(404, 'nao_encontrado');
+  if (sub !== undefined && !subs.includes(sub)) throw new ErroHttp(404, 'nao_encontrado');
+  return { id: id.toLowerCase(), sub };
 }

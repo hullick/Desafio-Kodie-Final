@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { Config, Context } from '@netlify/functions';
+import type { Config } from '@netlify/functions';
 import type { PoolClient } from 'pg';
 import { comUsuario } from '../lib/com-usuario.ts';
 import { cifrar, decifrar } from '../lib/cripto.ts';
-import { ErroHttp, idDaRota, json, lerCorpo, metodoNaoPermitido, semConteudo, tratar } from '../lib/http.ts';
+import { ErroHttp, casarRota, json, lerCorpo, metodoNaoPermitido, semConteudo, tratar } from '../lib/http.ts';
 import { Validador, hojeSP, lerMes } from '../lib/validacao.ts';
 
 /**
@@ -60,10 +60,10 @@ async function obter(db: PoolClient, id: string, usuarioId: string) {
   return paraApi(r.rows[0], usuarioId);
 }
 
-export default tratar(async (req: Request, ctx: Context) => {
-  const temId = ctx.params?.['id'] !== undefined;
+export default tratar(async (req: Request) => {
+  const rota = casarRota(req, 'lancamentos');
 
-  if (!temId) {
+  if (!rota.id) {
     if (req.method === 'GET') {
       const { ano, mes, limite } = lerMes(new URL(req.url), true);
       return comUsuario(req, async (db, usuarioId) => {
@@ -94,7 +94,7 @@ export default tratar(async (req: Request, ctx: Context) => {
     return metodoNaoPermitido(['GET', 'POST']);
   }
 
-  const id = idDaRota(ctx);
+  const id = rota.id;
   if (req.method === 'GET') {
     return comUsuario(req, async (db, usuarioId) => json(await obter(db, id, usuarioId)));
   }
