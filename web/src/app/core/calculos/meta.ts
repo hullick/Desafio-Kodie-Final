@@ -1,4 +1,4 @@
-import { Mes, mesesInclusivos } from '../tempo/mes';
+import { mesDeISO, mesesInclusivos } from '../tempo/mes';
 
 export type EstadoMeta = 'ativa' | 'atingida' | 'prazo_encerrado';
 
@@ -15,14 +15,16 @@ export interface CalculoMeta {
 
 /** Regras da spec 04 (Cálculos). */
 export function calcularMeta(
-  i: { metaCentavos: number; saldoCentavos: number; prazo: Mes },
-  hoje: Mes,
+  i: { metaCentavos: number; saldoCentavos: number; /** YYYY-MM-DD */ prazo: string },
+  /** YYYY-MM-DD */
+  hoje: string,
 ): CalculoMeta {
   const razao = i.metaCentavos > 0 ? i.saldoCentavos / i.metaCentavos : 0;
   const percentual = Math.round(razao * 1000) / 10;
   const progresso = Math.min(1, Math.max(0, razao));
   const faltamCentavos = Math.max(0, i.metaCentavos - i.saldoCentavos);
-  const mesesRestantes = mesesInclusivos(hoje, i.prazo);
+  // Prazo vencido (antes de hoje) zera os meses; senão conta do mês de hoje ao mês do prazo, incluindo os dois.
+  const mesesRestantes = i.prazo < hoje ? 0 : mesesInclusivos(mesDeISO(hoje), mesDeISO(i.prazo));
 
   if (faltamCentavos === 0) {
     return { progresso: 1, percentual, faltamCentavos, mesesRestantes, sugeridoMensalCentavos: null, estado: 'atingida' };

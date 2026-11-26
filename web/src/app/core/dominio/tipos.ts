@@ -28,7 +28,8 @@ export interface Caixinha {
   readonly nome: string;
   readonly icone: IconeCaixinha;
   readonly metaCentavos: number;
-  readonly prazo: Mes;
+  /** YYYY-MM-DD, a partir de hoje (R-04.3) */
+  readonly prazo: string;
   readonly saldoCentavos: number;
   readonly criadoEm: string;
 }

@@ -11,7 +11,6 @@ export * from './icon-option/icon-option';
 export * from './info-tile/info-tile';
 export * from './keypad/keypad';
 export * from './money-input/money-input';
-export * from './month-select/month-select';
 export * from './month-switcher/month-switcher';
 export * from './movement-item/movement-item';
 export * from './password-checks/password-checks';

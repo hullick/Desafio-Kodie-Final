@@ -7,7 +7,7 @@ import { DadosCaixinha } from '../../core/dominio/tipos';
 import { carregavel } from '../../core/estado/carregavel';
 import { DadosAlterados } from '../../core/estado/dados-alterados';
 import { ToastService } from '../../core/estado/toast';
-import { mesAtual } from '../../core/tempo/mes';
+import { hojeISO } from '../../core/tempo/mes';
 import { ERRO_SALVAR } from '../shell/lancamento-sheet.facade';
 
 /** Monta a tela de nova caixinha ou de edição (/caixinhas/:id/editar) (R-04.3, R-04.7). */
@@ -27,7 +27,7 @@ export class CaixinhaFormFacade {
     return c ? { nome: c.nome, icone: c.icone, metaCentavos: c.metaCentavos, prazo: c.prazo } : null;
   });
   readonly saldoCentavos = computed(() => this.existente.valor()?.saldoCentavos ?? 0);
-  readonly hoje = mesAtual();
+  readonly hoje = hojeISO();
   readonly voltarPara = computed(() => (this.id() ? `/caixinhas/${this.id()}` : '/caixinhas'));
   readonly salvando = signal(false);
   readonly erro = signal<string | null>(null);

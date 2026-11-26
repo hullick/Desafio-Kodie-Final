@@ -26,10 +26,10 @@ describe('mapeadores', () => {
   });
 
   it('caixinha traz progresso, prazo e sugerido (R-04.2)', () => {
-    const c: Caixinha = { id: 'c3', nome: 'Celular novo', icone: 'aparelho', metaCentavos: 200000, prazo: { ano: 2027, mes: 3 },
+    const c: Caixinha = { id: 'c3', nome: 'Celular novo', icone: 'aparelho', metaCentavos: 200000, prazo: '2027-03-15',
       saldoCentavos: 80000, criadoEm: '' };
-    expect(paraCaixinhaVM(c, { ano: 2026, mes: 11 })).toMatchObject({
-      icone: 'smartphone', percentual: 40, prazoRotulo: 'mar/2027', sugeridoCentavos: 24000, estado: 'ativa',
+    expect(paraCaixinhaVM(c, hoje)).toMatchObject({
+      icone: 'smartphone', percentual: 40, prazoRotulo: '15/03/2027', sugeridoCentavos: 24000, estado: 'ativa',
     });
   });
 

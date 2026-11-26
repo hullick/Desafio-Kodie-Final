@@ -6,7 +6,7 @@ Transformar "quero um celular novo" num número mensal concreto e mostrar o prog
 
 ## Modelo
 
-- `caixinhas(id, user_id, nome text (até 40), icone text (lista fixa), meta_centavos bigint > 0, prazo date (sempre o último dia do mês escolhido), criado_em, atualizado_em)`
+- `caixinhas(id, user_id, nome text (até 40), icone text (lista fixa), meta_centavos bigint > 0, prazo date (dia, mês e ano escolhidos; de hoje até 10 anos), criado_em, atualizado_em)`
 - `movimentos_caixinha(id, user_id, caixinha_id, tipo 'guardar'|'retirar', valor_centavos > 0, data date, criado_em)`
 
 Ambas com RLS de dono. Uma trigger garante que `caixinha_id` pertence ao mesmo `user_id`.
@@ -17,7 +17,7 @@ Ambas com RLS de dono. Uma trigger garante que `caixinha_id` pertence ao mesmo `
 
 - **Saldo da caixinha** = Σ guardar − Σ retirar
 - **Progresso** = saldo ÷ meta, limitado a 100% na barra (o texto pode mostrar "R$ 2.100,00 de R$ 2.000,00")
-- **Meses restantes** = meses do mês atual até o mês do prazo, **incluindo os dois**, com mínimo 1
+- **Meses restantes** = meses do mês atual até o mês do prazo, **incluindo os dois**, com mínimo 1. Se a data do prazo é anterior a hoje, é 0
 - **Valor sugerido por mês** = arredondar para cima, em centavos, (meta − saldo) ÷ meses restantes. Se saldo ≥ meta: "Meta atingida". Se o prazo já passou: "Prazo encerrado" e o valor que falta.
 - **Meta atingida:** saldo ≥ meta. Usa o acento dourado `#FFE08F`, o único uso dele no app *(resumo: "usar pouco")*.
 
@@ -27,7 +27,7 @@ Ambas com RLS de dono. Uma trigger garante que `caixinha_id` pertence ao mesmo `
 |----|-----------|--------|
 | R-04.1 | A lista mostra o card "Total guardado" (soma dos saldos) com o botão "Nova caixinha", seguido das caixinhas ativas por prazo mais próximo e, por fim, a seção "Metas atingidas". | resumo + mockup |
 | R-04.2 | Cada card mostra ícone, nome, "R$ X de R$ Y", %, barra, "Prazo: até {mês/ano}" e "Guarde R$ Z/mês para atingir", com um botão "Guardar +". | resumo |
-| R-04.3 | Nova caixinha pede ícone, nome, valor (teclado do R-02.3, com atalhos + R$ 500 / + R$ 1.000 / + R$ 2.000) e prazo (seletor de mês/ano, no mínimo o mês atual e no máximo 10 anos). O valor sugerido aparece ao vivo antes de criar. | resumo + mockup |
+| R-04.3 | Nova caixinha pede ícone, nome, valor (teclado do R-02.3, com atalhos + R$ 500 / + R$ 1.000 / + R$ 2.000) e prazo (seletor de data com dia, mês e ano, no mínimo hoje e no máximo 10 anos; *time*: antes era mês/ano). O valor sugerido aparece ao vivo antes de criar. | resumo + mockup |
 | R-04.4 | O detalhe mostra o anel de progresso, o saldo, "Faltam R$ X", os cards "Prazo final" e "Meta mensal", os botões **Guardar** e **Retirar** e o histórico de movimentos (mais recente primeiro). | resumo |
 | R-04.5 | Guardar e Retirar abrem um sheet com o teclado numérico e a data (padrão hoje, sem futuro). Retirar não pode exceder o saldo da caixinha: a validação é feita no banco, e o front mostra "Você tem R$ X nesta caixinha". | proposta |
 | R-04.6 | Guardar e Retirar afetam o saldo do mês conforme a spec 03. | time |

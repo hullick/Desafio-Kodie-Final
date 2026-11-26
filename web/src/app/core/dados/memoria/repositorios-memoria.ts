@@ -66,7 +66,7 @@ export class CaixinhasMemoria extends CaixinhasRepositorio {
   listar(): Promise<Caixinha[]> {
     const lista = this.banco.dados.caixinhas
       .map((c) => this.comSaldo(c))
-      .sort((a, b) => a.prazo.ano - b.prazo.ano || a.prazo.mes - b.prazo.mes);
+      .sort((a, b) => a.prazo.localeCompare(b.prazo));
     return this.banco.latencia(lista);
   }
 

@@ -20,7 +20,7 @@ describe('CaixinhaFormFacade', () => {
     ], CaixinhaFormFacade, [proverDadosEmMemoria()]);
     return { f, router };
   };
-  const dados = { nome: 'Bike', icone: 'outro' as const, metaCentavos: 150000, prazo: { ano: 2030, mes: 1 } };
+  const dados = { nome: 'Bike', icone: 'outro' as const, metaCentavos: 150000, prazo: '2030-01-15' };
 
   it('cria e vai para o detalhe (R-04.3)', async () => {
     const { f, router } = await abrir('/caixinhas/nova');

@@ -84,3 +84,17 @@ export function rotuloDia(dataISO: string, hoje: string): string {
   const [, m, d] = dataISO.split('-').map(Number);
   return `${d} de ${CURTOS[m - 1]}.`;
 }
+
+/** "05/03/2027" (prazo da caixinha). */
+export function formatarData(dataISO: string): string {
+  const [ano, mes, dia] = dataISO.split('-');
+  return `${dia}/${mes}/${ano}`;
+}
+
+/** Soma `n` meses a uma data ISO, mantendo o dia ou usando o último dia do mês se ele não existir. */
+export function somarMesesISO(dataISO: string, n: number): string {
+  const [, , dia] = dataISO.split('-').map(Number);
+  const m = somarMeses(mesDeISO(dataISO), n);
+  const ultimo = Number(ultimoDiaISO(m).slice(8, 10));
+  return `${m.ano}-${String(m.mes).padStart(2, '0')}-${String(Math.min(dia, ultimo)).padStart(2, '0')}`;
+}

@@ -55,9 +55,9 @@ describe('repositórios em memória', () => {
 
   it('só exclui caixinha com saldo zero (R-04.7)', async () => {
     await expect(cx.excluir('c2')).rejects.toBeInstanceOf(ErroCaixinha);
-    const nova = await cx.criar({ nome: '  Curso  ', icone: 'estudos', metaCentavos: 1000, prazo: mes });
+    const nova = await cx.criar({ nome: '  Curso  ', icone: 'estudos', metaCentavos: 1000, prazo: '2030-01-15' });
     expect(nova.nome).toBe('Curso');
-    const editada = await cx.editar(nova.id, { nome: 'Curso de inglês', icone: 'estudos', metaCentavos: 2000, prazo: mes });
+    const editada = await cx.editar(nova.id, { nome: 'Curso de inglês', icone: 'estudos', metaCentavos: 2000, prazo: '2030-02-15' });
     expect(editada.metaCentavos).toBe(2000);
     expect(await cx.movimentos(nova.id)).toEqual([]);
     await cx.excluir(nova.id);
