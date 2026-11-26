@@ -11,7 +11,11 @@ import { EntrarFacade } from './entrar.facade';
   providers: [EntrarFacade],
   template: `
     <nb-auth-template titulo="Entrar" subtitulo="Que bom ver você de novo.">
+      @if (f.aviso(); as aviso) {
+        <p role="status" class="mb-4 rounded-box bg-brand-light px-4 py-3 text-sm font-semibold text-brand-ink">{{ aviso }}</p>
+      }
       <nb-login-form [carregando]="f.carregando()" [erro]="f.erro()" (entrar)="f.entrar($event)" />
+      <a routerLink="/esqueci-senha" class="mt-2 flex min-h-11 items-center justify-center text-sm font-bold text-brand-ink">Esqueci a senha</a>
       <p rodape class="text-muted">Ainda não tem conta?
         <a routerLink="/cadastro" class="inline-flex min-h-11 items-center font-bold text-brand-ink">Criar conta</a>
       </p>

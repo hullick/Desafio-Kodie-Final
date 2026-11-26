@@ -29,8 +29,10 @@ import { PerfilFacade } from './perfil.facade';
       <a routerLink="/privacidade" class="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-brand-ink">Saiba mais</a>
     </section>
 
-    <div class="mt-6 overflow-hidden rounded-card bg-surface shadow-n1">
+    <div class="mt-6 divide-y divide-line overflow-hidden rounded-card bg-surface shadow-n1">
       <button nb-settings-item type="button" icone="log-out" titulo="Sair" subtitulo="Desconectar deste aparelho" (click)="f.sair()"></button>
+      <a nb-settings-item routerLink="/perfil/excluir" icone="trash-2" titulo="Excluir minha conta"
+        subtitulo="Apaga sua conta e todos os dados" [perigo]="true"></a>
     </div>
 
     <p class="mt-8 text-center text-xs text-muted">NuBanko v{{ f.versao }}</p>
