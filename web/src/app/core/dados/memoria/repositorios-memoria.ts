@@ -25,6 +25,10 @@ export class LancamentosMemoria extends LancamentosRepositorio {
     return this.banco.latencia(this.banco.dados.lancamentos.filter((l) => noMes(l.data, m)).sort(maisRecente));
   }
 
+  async ultimos(m: Mes, limite: number): Promise<Lancamento[]> {
+    return (await this.listarDoMes(m)).slice(0, limite);
+  }
+
   obter(id: string): Promise<Lancamento> {
     const l = this.banco.dados.lancamentos.find((x) => x.id === id);
     return l ? this.banco.latencia(l) : Promise.reject(new Error('Lançamento não encontrado'));
@@ -140,6 +144,7 @@ export class PerfilMemoria extends PerfilRepositorio {
 /**
  * Sessão de demonstração: começa logada como a pessoa da semente. Aceita qualquer senha
  * para e-mails conhecidos (a semente e os cadastrados). Nunca guarda a senha.
+ * Troca e redefinição de senha só conferem que algo foi digitado; excluir a conta sai dela.
  */
 @Injectable()
 export class SessaoMemoria extends SessaoRepositorio {
@@ -155,11 +160,44 @@ export class SessaoMemoria extends SessaoRepositorio {
     this._autenticado.set(true);
   }
 
+  async verificar(): Promise<boolean> {
+    return this._autenticado();
+  }
+
   async cadastrar(conta: NovaConta): Promise<void> {
-    this.cadastrados.add(conta.email.trim().toLowerCase());
+    const e = conta.email.trim().toLowerCase();
+    if (e === this.banco.dados.perfil.email.toLowerCase() || this.cadastrados.has(e)) {
+      throw new ErroSessao('email_em_uso');
+    }
+    this.cadastrados.add(e);
+    this._autenticado.set(true);
   }
 
   async sair(): Promise<void> {
+    this._autenticado.set(false);
+  }
+
+  async pedirRedefinicao(): Promise<void> {
+    // Resposta neutra: nada a fazer na demonstração.
+  }
+
+  async redefinirSenha(token: string, novaSenha: string): Promise<void> {
+    if (!token) throw new ErroSessao('token_invalido');
+    if (!novaSenha) throw new ErroSessao('senha_fraca');
+    this._autenticado.set(false);
+  }
+
+  async alterarSenha(atual: string, nova: string): Promise<void> {
+    if (!atual) throw new ErroSessao('senha_atual_incorreta');
+    if (!nova) throw new ErroSessao('senha_fraca');
+  }
+
+  async excluirConta(senha: string): Promise<void> {
+    if (!senha) throw new ErroSessao('senha_atual_incorreta');
+    this._autenticado.set(false);
+  }
+
+  encerrarLocalmente(): void {
     this._autenticado.set(false);
   }
 }

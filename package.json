@@ -7,15 +7,23 @@
   "description": "Raiz do monorepo: Netlify Functions (API) e ferramentas. O app Angular fica em web/.",
   "scripts": {
     "dev": "netlify dev",
-    "build": "npm ci --prefix web && npm run build --prefix web"
+    "build": "npm ci --prefix web && npm run build --prefix web",
+    "test": "vitest run",
+    "typecheck": "tsc -p netlify"
   },
   "dependencies": {
+    "better-auth": "^1.7.28",
+    "nodemailer": "^10.6.1",
     "pg": "^8.23.1"
   },
   "devDependencies": {
     "@netlify/functions": "^6.1.2",
+    "@types/node": "^24.19.4",
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "netlify-cli": "^27.20.1",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^5.1.2",
+    "yaml": "^2.9.1"
   }
 }

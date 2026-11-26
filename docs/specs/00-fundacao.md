@@ -69,7 +69,8 @@ O detalhe de cada tabela está na spec dona dela. Todas as tabelas de domínio t
 | R-00.4: regras de acesso por dono | Igual a R-00.1, mais `user_id` preenchido pelo banco (`default app.usuario_id()`) e imutável por trigger. A API não aceita `user_id` no corpo das requisições; o cliente não escolhe o dono. |
 | R-00.5: coleta mínima | Só nome, e-mail, senha e o registro do aceite. Sem CPF, telefone, endereço, analytics ou rastreadores de terceiros. O Better Auth guarda IP e user-agent na sessão; isso aparece no texto de privacidade (spec 05). |
 | R-00.6: segredos do servidor nunca vão para o front | `DATABASE_URL`, `BETTER_AUTH_SECRET` e as credenciais de SMTP existem só nas variáveis de ambiente das Functions. Teste automatizado verifica que o bundle não contém nenhum deles. |
-| R-00.7: cookies de sessão seguros | Cookie `HttpOnly`, `Secure` (em produção) e `SameSite=Lax`. O Better Auth confere a origem das requisições de escrita (`trustedOrigins`), o que cobre CSRF. |
+| R-00.7: cookies de sessão seguros | Cookie `HttpOnly`, `Secure` (em produção) e `SameSite=Lax`. O token da sessão nunca aparece no corpo das respostas (só no cookie). Toda escrita (auth e domínio) com `Origin` de outro site recebe `403`, o que cobre CSRF. |
+| R-00.8: textos das pessoas cifrados no banco *(time)* | Nome do perfil, nome da caixinha e descrição do lançamento são cifrados nas functions com AES-256-GCM, chave derivada por pessoa (HKDF da `NUBANKO_CHAVE_DADOS`) e AAD amarrado à linha e à coluna. O banco só aceita esses campos no formato cifrado (`app.eh_cifrado`). Valores, datas, tipos, categorias e ícones ficam em claro para o banco somar e validar saldo *(time: só textos livres)*. O e-mail fica em claro porque é a chave do login. |
 
 **Testes obrigatórios de segurança:**
 - **Banco:** para cada tabela, um teste pgTAP com dois usuários (A e B) prova que B não lê, não altera e não apaga dados de A, e que, sem `app.user_id`, nada é acessível.
