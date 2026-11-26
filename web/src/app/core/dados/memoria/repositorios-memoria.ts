@@ -1,11 +1,12 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { calcularResumo } from '../../calculos/resumo';
 import {
   Caixinha, DadosCaixinha, Lancamento, MovimentoCaixinha, NovoLancamento, NovoMovimento, Perfil, ResumoMes,
 } from '../../dominio/tipos';
 import { Mes, intervaloDoMes } from '../../tempo/mes';
 import {
-  CaixinhasRepositorio, ErroCaixinha, LancamentosRepositorio, PerfilRepositorio, ResumoRepositorio,
+  CaixinhasRepositorio, ErroCaixinha, ErroSessao, LancamentosRepositorio, NovaConta, PerfilRepositorio, ResumoRepositorio,
+  SessaoRepositorio,
 } from '../repositorios';
 import { BancoMemoria } from './banco-memoria';
 
@@ -133,5 +134,32 @@ export class PerfilMemoria extends PerfilRepositorio {
   atualizarNome(nome: string): Promise<Perfil> {
     this.banco.dados.perfil = { ...this.banco.dados.perfil, nome: nome.trim() };
     return this.obter();
+  }
+}
+
+/**
+ * Sessão de demonstração: começa logada como a pessoa da semente. Aceita qualquer senha
+ * para e-mails conhecidos (a semente e os cadastrados). Nunca guarda a senha.
+ */
+@Injectable()
+export class SessaoMemoria extends SessaoRepositorio {
+  private readonly banco = inject(BancoMemoria);
+  private readonly _autenticado = signal(true);
+  readonly autenticado = this._autenticado.asReadonly();
+  private readonly cadastrados = new Set<string>();
+
+  async entrar(email: string, senha: string): Promise<void> {
+    const e = email.trim().toLowerCase();
+    const conhecido = e === this.banco.dados.perfil.email.toLowerCase() || this.cadastrados.has(e);
+    if (!conhecido || !senha) throw new ErroSessao('credenciais_invalidas');
+    this._autenticado.set(true);
+  }
+
+  async cadastrar(conta: NovaConta): Promise<void> {
+    this.cadastrados.add(conta.email.trim().toLowerCase());
+  }
+
+  async sair(): Promise<void> {
+    this._autenticado.set(false);
   }
 }
