@@ -1,1 +1,47 @@
-/* You can add global styles to this file, and also import other style files */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/manrope';
+@import 'tailwindcss';
+
+/* Tokens do design system NuBanko (docs/specs/00-fundacao.md, design/nubanko_neo_fintech/DESIGN.md) */
+@theme {
+  --color-brand: #01ced1;
+  --color-brand-dark: #00a3a6;
+  --color-brand-light: #e6fafa;
+  /* Variante para TEXTO turquesa: #00A3A6 reprova no AA (3.09:1); #00696B passa (6.5:1) */
+  --color-brand-ink: #00696b;
+  --color-ink: #1a1a1a;
+  --color-muted: #6b7280;
+  --color-canvas: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-line: #eef0f4;
+  --color-gold: #ffe08f;
+  --color-gold-ink: #584400;
+  --color-pos: #16a34a;
+  --color-neg: #e5484d;
+  /* Variantes para TEXTO: as cores semânticas originais reprovam no AA em texto pequeno */
+  --color-pos-ink: #15803d;
+  --color-neg-ink: #c4373c;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-box: 1rem;
+  --radius-card: 1.5rem;
+
+  --shadow-n1: 0 4px 20px -2px rgb(17 24 39 / 0.04), 0 2px 6px -1px rgb(17 24 39 / 0.02);
+  --shadow-n2: 0 16px 36px -4px rgb(17 24 39 / 0.08), 0 6px 12px -2px rgb(17 24 39 / 0.03);
+  --shadow-n3: 0 8px 24px -4px rgb(1 206 209 / 0.35);
+}
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    overscroll-behavior: none;
+  }
+  :focus-visible { outline: 2px solid var(--color-brand-ink); outline-offset: 2px; }
+}
+
+@utility tabular { font-variant-numeric: tabular-nums; }
+@utility pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+@utility pt-safe { padding-top: env(safe-area-inset-top, 0px); }
