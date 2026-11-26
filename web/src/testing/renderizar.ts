@@ -1,4 +1,4 @@
-import { Provider, Type } from '@angular/core';
+import { EnvironmentProviders, Provider, Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 export interface Renderizado<T> {
@@ -17,7 +17,7 @@ export interface Renderizado<T> {
 export async function renderizar<T>(
   tipo: Type<T>,
   entradas: Record<string, unknown> = {},
-  providers: Provider[] = [],
+  providers: (Provider | EnvironmentProviders)[] = [],
 ): Promise<Renderizado<T>> {
   TestBed.configureTestingModule({ imports: [tipo], providers });
   const fixture = TestBed.createComponent(tipo);
