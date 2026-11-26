@@ -108,6 +108,10 @@ describe('/api/auth: senha', () => {
     const ok = await chamarAuth('/change-password',
       { currentPassword: SENHA, newPassword: 'Nova1234!', revokeOtherSessions: true }, c.cookie);
     expect(ok.status).toBe(200);
+    const corpo = (await ok.json()) as { token?: string; user: { name: string } };
+    expect(corpo.token).toBeUndefined();
+    expect(corpo.user.name).toBe('');
+    expect(ok.headers.getSetCookie().join()).toMatch(/nubanko\.session_token=/);
     expect((await chamarAuth('/sign-in/email', { email: c.email, password: 'Nova1234!' })).status).toBe(200);
   });
 
@@ -133,6 +137,16 @@ describe('/api/auth: senha', () => {
     expect(await (await chamarAuth('/get-session', undefined, c.cookie, 'GET')).json()).toBeNull();
     const reuso = await chamarAuth('/reset-password', { newPassword: 'Outra123!', token });
     expect(reuso.status).toBe(400);
+  });
+});
+
+describe('/api/auth: redirecionamento', () => {
+  it('redefinição com redirectTo para outro site é recusada e não manda e-mail', async () => {
+    const c = await cadastrar();
+    const r = await chamarAuth('/request-password-reset', { email: c.email, redirectTo: 'https://evil.example/x' });
+    expect(r.status).toBe(403);
+    expect(((await r.json()) as { code: string }).code).toBe('INVALID_REDIRECT_URL');
+    expect(await ultimoEmail(c.email)).toBeNull();
   });
 });
 

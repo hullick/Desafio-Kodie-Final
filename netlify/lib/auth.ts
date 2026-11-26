@@ -33,6 +33,9 @@ const SENHA_NOVA: Record<string, string> = {
   '/change-password': 'newPassword',
 };
 
+/** Rotas cuja resposta traz o token da sessão no corpo (ele fica só no cookie). */
+const ROTAS_COM_TOKEN = new Set(['/sign-up/email', '/sign-in/email', '/change-password']);
+
 export const auth = betterAuth({
   appName: 'NuBanko',
   baseURL,
@@ -85,6 +88,10 @@ export const auth = betterAuth({
   },
 
   advanced: {
+    // Explícito: o Better Auth desliga essas checagens sozinho quando NODE_ENV=test,
+    // e os testes precisam exercitar as mesmas proteções da produção.
+    disableOriginCheck: false,
+    disableCSRFCheck: false,
     cookiePrefix: 'nubanko',
     useSecureCookies: baseURL.startsWith('https://'),
     defaultCookieAttributes: { sameSite: 'lax', httpOnly: true },
@@ -115,11 +122,11 @@ export const auth = betterAuth({
         if (typeof corpo?.['email'] === 'string') corpo['email'] = corpo['email'].trim().toLowerCase();
       }
     }),
-    // Cadastro e login: (1) o token da sessão sai do corpo JSON, para existir só no cookie
+    // Cadastro, login e troca de senha: (1) o token da sessão sai do corpo JSON, para existir só no cookie
     // HttpOnly, fora do alcance de JavaScript; (2) o cadastro traria o nome cifrado (o valor
     // antes da trigger), então devolve vazio como as outras rotas. O nome vem de GET /api/perfil.
     after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path !== '/sign-up/email' && ctx.path !== '/sign-in/email') return;
+      if (!ROTAS_COM_TOKEN.has(ctx.path)) return;
       const r = ctx.context.returned as { token?: unknown; user?: Record<string, unknown> } | undefined;
       if (!r || typeof r !== 'object' || !r.user) return;
       const { token: _token, ...resto } = r;
