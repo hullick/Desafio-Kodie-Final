@@ -409,6 +409,7 @@ Sobe o ambiente inteiro (banco, migrações, e-mail, API e app) isolado numa red
 
 ```bash
 cp .env.example .env        # senhas de desenvolvimento; o .env não vai para o git
+# Se `id -u` / `id -g` não derem 1000, ajuste APP_UID / APP_GID no .env
 docker compose up -d        # a primeira vez demora: build das imagens e npm ci
 ./scripts/smoke.sh          # confere se está tudo de pé
 ```
@@ -494,4 +495,5 @@ Cada arquivo de `netlify/functions/*.mts` vira um endpoint, com a rota em `expor
 | `localhost:8888` não abre logo depois do `up` | Na primeira vez o `app` roda `npm ci`. Acompanhe com `docker compose logs -f app`. |
 | Mudei senhas no `.env` e o banco não aceita | O banco guarda as senhas da primeira subida. Use `docker compose down -v` para recriar (apaga os dados locais). |
 | Instalei um pacote e o `app` não enxerga | Os `node_modules` do container são separados dos do host. O `app` reinstala sozinho quando o `package-lock.json` muda: `docker compose restart app`. |
+| `Permission denied` no git ou arquivos com dono `root` no repositório (`.netlify/`, `web/dist/`, `netlify/`) | O `app` rodou com outro usuário: `APP_UID`/`APP_GID` do `.env` diferentes de `id -u`/`id -g`, ou volumes criados antes dessa regra existir. Corrija o `.env`, devolva os arquivos para você com `docker run --rm -v "$PWD":/r alpine chown -R "$(id -u):$(id -g)" /r` e recrie o app: `docker compose down`, `docker volume rm nubanko_app-node-modules nubanko_web-node-modules nubanko_web-angular-cache`, `docker compose up -d --build`. |
 | `migrate` falhou | Veja `docker compose logs migrate`. A migração com erro não fica registrada, então é só corrigir e rodar `docker compose up -d migrate` de novo. |
