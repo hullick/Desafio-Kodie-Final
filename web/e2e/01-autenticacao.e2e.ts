@@ -61,6 +61,21 @@ test.describe('Spec 01: cadastro, login e rotas protegidas', () => {
     await expect(page).toHaveURL(/\/entrar\?voltar=%2Finicio/);
   });
 
+  test('ao abrir o site sem sessão, cai no login', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/entrar/);
+    await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
+  });
+
+  test('com sessão ativa, login e cadastro vão direto para o início', async ({ page }) => {
+    await cadastrarPelaApi(page, novaConta('Nina'));
+    for (const rota of ['/entrar', '/cadastro']) {
+      await page.goto(rota);
+      await expect(page).toHaveURL(/\/inicio$/);
+      await expect(page.getByText('Olá, Nina')).toBeVisible();
+    }
+  });
+
   test('o cookie de sessão é HttpOnly e o token não fica acessível ao JavaScript', async ({ page }) => {
     await cadastrarPelaApi(page);
     const cookie = (await page.context().cookies()).find((k) => k.name.includes('session_token'));

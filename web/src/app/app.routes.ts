@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { environment } from '../environments/environment';
 import { exigirSessao } from './core/sessao/exigir-sessao.guard';
+import { semSessao } from './core/sessao/sem-sessao.guard';
 
 /** "Esqueci a senha" e "Nova senha" só existem quando há SMTP (environment.recuperacaoSenha). */
 export function rotasDeRecuperacao(ligada = environment.recuperacaoSenha): Routes {
@@ -19,8 +20,8 @@ export function rotasDeRecuperacao(ligada = environment.recuperacaoSenha): Route
 
 /** Cada rota carrega uma página (lazy). As abas logadas ficam dentro da casca (ShellPage). */
 export const routes: Routes = [
-  { path: 'entrar', title: 'Entrar · NuBanko', loadComponent: () => import('./pages/entrar/entrar.page').then((m) => m.EntrarPage) },
-  { path: 'cadastro', title: 'Criar conta · NuBanko', loadComponent: () => import('./pages/cadastro/cadastro.page').then((m) => m.CadastroPage) },
+  { path: 'entrar', title: 'Entrar · NuBanko', canActivate: [semSessao], loadComponent: () => import('./pages/entrar/entrar.page').then((m) => m.EntrarPage) },
+  { path: 'cadastro', title: 'Criar conta · NuBanko', canActivate: [semSessao], loadComponent: () => import('./pages/cadastro/cadastro.page').then((m) => m.CadastroPage) },
   ...rotasDeRecuperacao(),
   {
     path: 'privacidade', title: 'Privacidade · NuBanko',
