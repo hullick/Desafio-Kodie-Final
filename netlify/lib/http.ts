@@ -1,4 +1,5 @@
 import type { Context } from '@netlify/functions';
+import { urlDoSite } from './site.ts';
 
 /**
  * Respostas e erros HTTP das functions de domínio. Todo erro sai como JSON
@@ -77,7 +78,7 @@ export function exigirMesmaOrigem(req: Request): void {
   if (METODOS_SEGUROS.has(req.method)) return;
   const origem = req.headers.get('origin');
   if (!origem) return;
-  const permitida = new URL(process.env['BETTER_AUTH_URL'] ?? req.url).origin;
+  const permitida = new URL(urlDoSite()).origin;
   if (origem !== permitida) throw new ErroHttp(403, 'origem_invalida');
 }
 

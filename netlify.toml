@@ -6,6 +6,10 @@
   publish = "web/dist/web/browser"
   functions = "netlify/functions"
 
+# Node da build e das functions na Netlify (LTS). O compose local usa a 26.
+[build.environment]
+  NODE_VERSION = "24"
+
 [functions]
   node_bundler = "esbuild"
 

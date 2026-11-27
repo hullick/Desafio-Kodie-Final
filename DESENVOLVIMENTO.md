@@ -15,6 +15,7 @@ Tudo o que você precisa para rodar, entender e mudar o app. Leia de cima para b
 - [11. Decisões já tomadas](#11-decisões-já-tomadas)
 - [12. Problemas comuns](#12-problemas-comuns)
 - [13. Ambiente com Docker Compose](#13-ambiente-com-docker-compose)
+- [14. Deploy na Netlify](#14-deploy-na-netlify)
 
 **O que é o NuBanko:** um app (PWA) de controle financeiro para jovens de 18 a 24 anos no primeiro salário ou estágio. Três funções: registrar gastos e entradas em poucos toques, juntar dinheiro em **caixinhas** (metas) e ver o **painel do mês**.
 
@@ -86,7 +87,7 @@ Rode dentro de `web/`.
 
 | Falta | Onde está planejado |
 |-------|---------------------|
-| Hospedagem e CI/CD (deploy previews, homologação e produção na Netlify) | Spec 00, "Hospedagem e deploy"; plan próprio a escrever |
+| CI no GitHub Actions (testes e migrações automáticas antes do deploy) | Spec 00, "Hospedagem e deploy". Hoje o deploy é da Netlify (seção 14) e as migrações rodam com `scripts/preparar-banco-netlify.sh` |
 | Fechar o sheet com o botão voltar do Android (U-02.6). Hoje fecha com Esc e com toque no fundo. | Plan 02 |
 | Os 4 agentes e a matriz de rastreabilidade | Plan 00, tarefa 9 |
 
@@ -568,3 +569,40 @@ Os textos que a pessoa escreve ficam cifrados no banco (R-00.8):
 - **A chave:** 32 bytes em base64 (`openssl rand -base64 32`). Em produção, só nas variáveis de ambiente da Netlify, uma por ambiente. **Perder a chave é perder esses textos.** Guarde uma cópia num cofre de senhas do time.
 - **Trocar a chave:** o formato começa com `v1.`. Para rotacionar, crie a `v2` em `cripto.ts` (aceitando ler `v1` com a chave antiga), recifre as linhas com um script e só então remova a antiga.
 
+
+---
+
+## 14. Deploy na Netlify
+
+A Netlify faz a build direto do GitHub a cada push, com as configurações do `netlify.toml` (comando, pasta publicada, functions e Node 24). Não há passo de build manual.
+
+| Branch | Ambiente |
+|--------|----------|
+| `master` | produção (branch de produção do site) |
+| `test` | homologação (branch deploy, quando ligado) |
+| PRs | deploy previews |
+
+**O banco (Netlify DB / Neon).** As functions **nunca** usam `NETLIFY_DATABASE_URL`: ela entra como o dono do Neon, que contorna o RLS. Elas usam os papéis do app:
+
+1. Pegue a URL **direta** (não pooled) do dono do banco: `npx netlify env:get NETLIFY_DATABASE_URL_UNPOOLED`.
+2. Rode, com senhas fortes novas para os três papéis (`openssl rand -hex 24`):
+   ```bash
+   NEON_URL_ADMIN='<url direta>' NUBANKO_OWNER_PASSWORD=... NUBANKO_APP_PASSWORD=... NUBANKO_AUTH_PASSWORD=... \
+     ./scripts/preparar-banco-netlify.sh
+   ```
+   O script cria os papéis (`nubanko_owner`, `nubanko_app`, `nubanko_auth`) e aplica `db/migrations`. É idempotente: **rode de novo antes de publicar cada release que traga migração** (migrações precisam ser compatíveis com o código anterior).
+
+**Variáveis de ambiente do site** (Site configuration → Environment variables, ou `npx netlify env:set`):
+
+| Variável | Valor |
+|----------|-------|
+| `DATABASE_URL` | URL **pooled** com `nubanko_app` e `sslmode=require` |
+| `DATABASE_URL_AUTH` | URL pooled com `nubanko_auth` |
+| `BETTER_AUTH_URL` | endereço oficial, ex. `https://nubanko.netlify.app`. Escopo **só produção**: em previews, o código usa a URL do próprio deploy (`netlify/lib/site.ts`) |
+| `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
+| `NUBANKO_CHAVE_DADOS` | `openssl rand -base64 32`. **Guarde uma cópia no cofre do time** (seção 13.8) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_REMETENTE` | provedor de e-mail real. Sem isso, "Esqueci a senha" falha |
+
+Não defina `NUBANKO_RATE_LIMIT` em ambiente publicado (o padrão é ligado).
+
+**Lançar uma versão:** suba a versão em `package.json` e `web/package.json` numa branch, leve `develop` → `test` → `master` com `--no-ff`, crie a tag `vX.Y.Z` no merge do `master` e faça push. O push do `master` dispara o deploy de produção.
