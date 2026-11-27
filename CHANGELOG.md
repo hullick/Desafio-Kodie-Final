@@ -14,6 +14,8 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 
 ## [Não lançado]
 
+## [1.0.1] - 2026-11-27
+
 ### Corrigido
 - Login e cadastro mandam para o início quem já está com a sessão ativa (inclusive com o cookie
   válido ao reabrir o site). Quem está sem sessão e abre o site cai no login.
@@ -78,5 +80,6 @@ Primeira versão: PWA de controle financeiro para quem está no primeiro salári
 - Testes de banco (pgTAP), da API (Vitest, com duas contas provando o isolamento), do front
   (Vitest, ~99% de linhas) e E2E (Playwright com checagem de acessibilidade axe) em 360×740 e 390×844.
 
-[Não lançado]: https://github.com/hullick/Desafio-Kodie-Final/compare/v1.0.0...develop
+[Não lançado]: https://github.com/hullick/Desafio-Kodie-Final/compare/v1.0.1...develop
+[1.0.1]: https://github.com/hullick/Desafio-Kodie-Final/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/hullick/Desafio-Kodie-Final/releases/tag/v1.0.0
