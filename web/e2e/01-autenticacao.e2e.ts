@@ -61,6 +61,18 @@ test.describe('Spec 01: cadastro, login e rotas protegidas', () => {
     await expect(page).toHaveURL(/\/entrar\?voltar=%2Finicio/);
   });
 
+  test('login e cadastro têm link um para o outro, visível sem rolar', async ({ page }) => {
+    await page.goto('/entrar');
+    const criar = page.getByRole('link', { name: 'Criar conta' });
+    await expect(criar).toBeInViewport();
+    await criar.click();
+    await expect(page).toHaveURL(/\/cadastro$/);
+    const entrar = page.getByRole('link', { name: 'Entrar', exact: true });
+    await expect(entrar).toBeInViewport();
+    await entrar.click();
+    await expect(page).toHaveURL(/\/entrar$/);
+  });
+
   test('ao abrir o site sem sessão, cai no login', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveURL(/\/entrar/);
