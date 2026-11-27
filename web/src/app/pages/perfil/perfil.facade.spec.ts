@@ -1,3 +1,4 @@
+import pkg from '../../../../package.json';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { abrirRota } from '../../../testing/abrir-rota';
@@ -16,7 +17,7 @@ describe('PerfilFacade (spec 05)', () => {
     const { servico: f, router } = await abrirRota('/perfil',
       [{ path: 'perfil', component: Pagina }, { path: 'entrar', component: Vazio }], PerfilFacade, [proverDadosEmMemoria()]);
     expect(f.vm()).toEqual({ nome: 'Larissa Santos', email: 'lari@exemplo.com', desde: rotuloMesCurto(somarMeses(mesAtual(), -1)) });
-    expect(f.versao).toBe('0.1.0');
+    expect(f.versao).toBe(pkg.version);
     expect(f.itens.map((i) => i.rota)).toEqual(['/perfil/dados', '/perfil/senha', '/privacidade']);
     await f.sair();
     expect(TestBed.inject(SessaoRepositorio).autenticado()).toBe(false);
