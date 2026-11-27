@@ -1,0 +1,1243 @@
+openapi: 3.1.0
+
+info:
+  title: NuBanko API
+  version: 0.1.0
+  summary: API do NuBanko (Netlify Functions em /api/*).
+  description: |
+    API do app de controle financeiro NuBanko. Serve o front Angular no mesmo domínio:
+    localmente em `http://localhost:8888` (`netlify dev`, ver DESENVOLVIMENTO.md, seção 13) e,
+    em produção, no domínio da Netlify.
+
+    ## Autenticação
+
+    A sessão é um cookie `HttpOnly`, `SameSite=Lax`, criado por `POST /api/auth/sign-up/email` ou
+    `POST /api/auth/sign-in/email`. O nome do cookie é `nubanko.session_token` em HTTP local e
+    `__Secure-nubanko.session_token` em HTTPS. **O token nunca aparece no corpo das respostas**:
+    o JavaScript da página não tem acesso a ele. O navegador envia o cookie sozinho em chamadas
+    para o mesmo domínio.
+
+    ## Isolamento por pessoa (R-00.1)
+
+    Cada pessoa só enxerga e altera os próprios dados. Isso vale em duas camadas: toda rota de
+    domínio passa por `comUsuario` (sessão + `app.user_id` local à transação) **e** o banco aplica
+    RLS em todas as tabelas. Um id de outra pessoa responde **404 `nao_encontrado`**, exatamente
+    igual a um id que não existe: a API não confirma nem que o recurso existe. Nenhuma rota aceita
+    `user_id` (ou qualquer campo de dono) no corpo.
+
+    ## Dados cifrados
+
+    Os textos que a pessoa escreve (nome do perfil, nome da caixinha e descrição do lançamento) são
+    gravados cifrados com AES-256-GCM, com uma chave derivada por pessoa (HKDF) e amarrados à linha
+    e à coluna (AAD). A API recebe e devolve esses textos em claro; o banco só guarda e só aceita o
+    texto cifrado. Valores, datas, tipos, categorias e ícones ficam em claro para o banco filtrar
+    e somar.
+
+    ## Proteção contra CSRF (R-00.7)
+
+    Toda escrita (`POST`, `PUT`, `PATCH`, `DELETE`) com cabeçalho `Origin` de outro site é recusada
+    com **403**. Requisições sem `Origin` (curl, apps nativos) passam.
+
+    ## Formato dos erros
+
+    - Rotas de domínio (`/api/lancamentos`, `/api/caixinhas`, `/api/resumo`, `/api/perfil`):
+      `{ "erro": "<codigo>", "detalhes"?: [{ "campo": "...", "problema": "..." }] }`
+      (schema `Erro`). Os códigos são estáveis; a mensagem para a pessoa é escolhida pelo front.
+    - Rotas de autenticação (`/api/auth/*`, Better Auth): `{ "code": "<CODIGO>", "message": "..." }`
+      (schema `ErroAuth`).
+    - Nenhuma resposta traz a mensagem crua do banco. Erro inesperado vira `500 { "erro": "interno" }`.
+
+    ## Convenções
+
+    - Dinheiro sempre em **centavos inteiros** (`valorCentavos`, `metaCentavos`), de 1 a 99.999.999
+      (R$ 999.999,99).
+    - Datas de calendário em `YYYY-MM-DD`; "hoje" é calculado no fuso `America/Sao_Paulo`.
+      Instantes (`criadoEm`) em ISO 8601 UTC.
+    - JSON em camelCase. Escritas exigem `Content-Type: application/json` e corpo de até 16 KiB.
+    - Respostas nunca vão para cache (`Cache-Control: no-store`).
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:8888
+    description: Local (docker compose, serviço app)
+
+tags:
+  - name: Autenticação
+    description: Better Auth em /api/auth/* (spec 01 e spec 05).
+  - name: Lançamentos
+    description: Gastos e entradas (spec 02).
+  - name: Resumo
+    description: Painel do mês (spec 03).
+  - name: Caixinhas
+    description: Metas, guardar e retirar (spec 04).
+  - name: Perfil
+    description: Nome, e-mail e aceite da política (spec 05).
+  - name: Sistema
+    description: Saúde da API.
+
+security:
+  - sessao: []
+
+paths:
+  # ───────────────────────────── Autenticação ─────────────────────────────
+  /api/auth/sign-up/email:
+    post:
+      tags: [Autenticação]
+      operationId: cadastrar
+      summary: Cria a conta e já entra nela
+      description: |
+        Cadastro (R-01.1). **Não há confirmação de e-mail**: a resposta já traz o cookie de
+        sessão. O e-mail é normalizado (`trim` + minúsculas). O nome é cifrado antes de chegar ao
+        banco e por isso volta **vazio** em `user.name`; leia-o em `GET /api/perfil`.
+
+        Sem confirmação de e-mail, um e-mail já cadastrado precisa ser informado (`422`) para a
+        pessoa saber que deve entrar ou recuperar a senha. O rate limit (3 cadastros por minuto por
+        IP) limita o uso disso para descobrir e-mails.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, aceiteVersao]
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  description: Como a pessoa prefere ser chamada. 2 a 40 caracteres após `trim`.
+                  minLength: 2
+                  maxLength: 40
+                  examples: [Lari]
+                email:
+                  type: string
+                  format: email
+                  examples: [lari@exemplo.com]
+                password:
+                  type: string
+                  format: password
+                  description: 8 a 128 caracteres, com pelo menos 1 número e 1 símbolo (R-01.2).
+                  minLength: 8
+                  maxLength: 128
+                aceiteVersao:
+                  type: string
+                  description: Versão dos Termos e da Política aceita. Precisa ser a atual (`2026-11`).
+                  const: '2026-11'
+      responses:
+        '200':
+          description: Conta criada e sessão aberta.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookieSessao'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/UsuarioAuth' }
+        '400':
+          description: |
+            Dados inválidos:
+            - `SENHA_FRACA`: senha sem 8+ caracteres, número ou símbolo.
+            - `NOME_INVALIDO`: nome fora de 2 a 40 caracteres.
+            - `ACEITE_OBRIGATORIO`: sem aceite ou aceite de outra versão.
+            - `VALIDATION_ERROR`: campo ausente ou com tipo errado, e-mail mal formado.
+            - `PASSWORD_TOO_LONG`: senha com mais de 128 caracteres.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              examples:
+                senhaFraca: { value: { code: SENHA_FRACA, message: 'A senha precisa de 8+ caracteres, 1 número e 1 símbolo.' } }
+                nomeInvalido: { value: { code: NOME_INVALIDO, message: 'O nome precisa ter de 2 a 40 caracteres.' } }
+                semAceite: { value: { code: ACEITE_OBRIGATORIO, message: 'É preciso aceitar a versão atual dos Termos e da Política.' } }
+                emailRuim: { value: { code: VALIDATION_ERROR, message: '[body.email] Invalid email address' } }
+        '403': { $ref: '#/components/responses/OrigemInvalidaAuth' }
+        '422':
+          description: Já existe conta com esse e-mail. Nenhum cookie é criado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              example: { code: USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL, message: User already exists. Use another email. }
+        '429': { $ref: '#/components/responses/MuitasTentativas' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/sign-in/email:
+    post:
+      tags: [Autenticação]
+      operationId: entrar
+      summary: Entra com e-mail e senha
+      description: |
+        Login (R-01.6). Senha errada e e-mail inexistente dão **a mesma** resposta (R-01.7).
+        Rate limit: 5 tentativas por minuto por IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                rememberMe:
+                  type: boolean
+                  default: true
+                  description: Com `false`, o cookie dura só até fechar o navegador.
+      responses:
+        '200':
+          description: Sessão aberta.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookieSessao'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [redirect, user]
+                properties:
+                  redirect: { type: boolean, const: false }
+                  user: { $ref: '#/components/schemas/UsuarioAuth' }
+        '400':
+          description: '`VALIDATION_ERROR`: e-mail ou senha ausentes ou com tipo errado.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+        '401':
+          description: E-mail ou senha incorretos (sem dizer qual).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              example: { code: INVALID_EMAIL_OR_PASSWORD, message: Invalid email or password }
+        '403': { $ref: '#/components/responses/OrigemInvalidaAuth' }
+        '429': { $ref: '#/components/responses/MuitasTentativas' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/get-session:
+    get:
+      tags: [Autenticação]
+      operationId: obterSessao
+      summary: Sessão atual (ou null)
+      description: |
+        Usada pela guarda de rotas (R-01.9). Sem sessão válida, responde `200` com `null` (não 401).
+        A sessão é renovada automaticamente enquanto a pessoa usa o app (validade de 7 dias,
+        renovada a cada 24 h de uso); nesse caso a resposta traz um `Set-Cookie` novo.
+      security:
+        - sessao: []
+        - {}
+      responses:
+        '200':
+          description: Sessão atual, ou `null`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: 'null'
+                  - $ref: '#/components/schemas/SessaoAtual'
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/sign-out:
+    post:
+      tags: [Autenticação]
+      operationId: sair
+      summary: Encerra a sessão neste aparelho
+      description: R-05.5. Apaga a sessão no banco e o cookie.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { type: object, maxProperties: 0 }
+      responses:
+        '200':
+          description: Sessão encerrada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, const: true }
+        '403': { $ref: '#/components/responses/OrigemInvalidaAuth' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/request-password-reset:
+    post:
+      tags: [Autenticação]
+      operationId: pedirRedefinicaoDeSenha
+      summary: Envia o e-mail de redefinição de senha
+      description: |
+        "Esqueci a senha" (R-01.8). A resposta é **sempre a mesma**, exista ou não conta com o
+        e-mail. O e-mail traz um link `GET /api/auth/reset-password/{token}` que vale 1 hora.
+        Rate limit: 3 pedidos por minuto por IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+                redirectTo:
+                  type: string
+                  description: |
+                    Página do app que recebe o token, **relativa** (ex.: `/nova-senha`). URL de outro
+                    site é recusada com 403 `INVALID_REDIRECT_URL`.
+                  examples: [/nova-senha]
+      responses:
+        '200':
+          description: Pedido aceito (resposta neutra).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: boolean, const: true }
+                  message: { type: string }
+              example: { status: true, message: 'If this email exists in our system, check your email for the reset link' }
+        '400':
+          description: '`VALIDATION_ERROR`: e-mail ausente ou mal formado.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+        '403':
+          description: '`INVALID_ORIGIN` (escrita de outro site) ou `INVALID_REDIRECT_URL` (redirectTo para outro site).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              example: { code: INVALID_REDIRECT_URL, message: Invalid redirectURL }
+        '429': { $ref: '#/components/responses/MuitasTentativas' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/reset-password/{token}:
+    get:
+      tags: [Autenticação]
+      operationId: abrirLinkDeRedefinicao
+      summary: Link do e-mail de redefinição
+      description: |
+        Aberto pelo navegador a partir do e-mail. Redireciona para `callbackURL` com o token na
+        query (`/nova-senha?token=...`) ou, se o token for inválido ou expirado,
+        com `?error=INVALID_TOKEN`. O front então chama `POST /api/auth/reset-password`.
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema: { type: string }
+        - name: callbackURL
+          in: query
+          required: true
+          schema: { type: string, examples: [/nova-senha] }
+      responses:
+        '302':
+          description: Redireciona para a página do app.
+          headers:
+            Location:
+              schema: { type: string }
+              examples:
+                valido: { value: 'http://localhost:8888/nova-senha?token=abc123' }
+                invalido: { value: 'http://localhost:8888/nova-senha?error=INVALID_TOKEN' }
+
+  /api/auth/reset-password:
+    post:
+      tags: [Autenticação]
+      operationId: redefinirSenha
+      summary: Define a nova senha com o token do e-mail
+      description: |
+        R-01.8. A nova senha segue R-01.2. Ao redefinir, **todas as sessões** da conta são
+        encerradas, e o token não pode ser reutilizado.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newPassword, token]
+              properties:
+                newPassword: { type: string, format: password, minLength: 8, maxLength: 128 }
+                token: { type: string }
+      responses:
+        '200':
+          description: Senha redefinida.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: boolean, const: true }
+        '400':
+          description: |
+            - `INVALID_TOKEN`: token inexistente, expirado ou já usado.
+            - `SENHA_FRACA`: nova senha fora da regra.
+            - `VALIDATION_ERROR`: campo ausente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              examples:
+                tokenInvalido: { value: { code: INVALID_TOKEN, message: Invalid token } }
+                senhaFraca: { value: { code: SENHA_FRACA, message: 'A senha precisa de 8+ caracteres, 1 número e 1 símbolo.' } }
+        '403': { $ref: '#/components/responses/OrigemInvalidaAuth' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/change-password:
+    post:
+      tags: [Autenticação]
+      operationId: alterarSenha
+      summary: Troca a senha de quem está logado
+      description: |
+        R-05.3. Confere a senha atual. Com `revokeOtherSessions: true` (recomendado), encerra as
+        sessões dos outros aparelhos e renova o cookie deste. Rate limit: 5 por minuto por IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password, minLength: 8, maxLength: 128 }
+                revokeOtherSessions: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Senha trocada.
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SetCookieSessao'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/UsuarioAuth' }
+        '400':
+          description: |
+            - `INVALID_PASSWORD`: senha atual incorreta (a sessão continua aberta).
+            - `SENHA_FRACA`: nova senha fora da regra.
+            - `VALIDATION_ERROR`: campo ausente.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              example: { code: INVALID_PASSWORD, message: Invalid password }
+        '401': { $ref: '#/components/responses/NaoAutenticadoAuth' }
+        '403': { $ref: '#/components/responses/OrigemInvalidaAuth' }
+        '429': { $ref: '#/components/responses/MuitasTentativas' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  /api/auth/delete-user:
+    post:
+      tags: [Autenticação]
+      operationId: excluirConta
+      summary: Exclui a conta e todos os dados, de forma definitiva
+      description: |
+        R-05.6 (LGPD, art. 18). Confere a senha e apaga a pessoa; em cascata vão perfil, sessões
+        (de todos os aparelhos), lançamentos, caixinhas (mesmo com saldo) e movimentos. Não há
+        como desfazer. A confirmação digitada ("EXCLUIR") é responsabilidade da tela.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, format: password }
+      responses:
+        '200':
+          description: Conta e dados apagados; o cookie é removido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, const: true }
+                  message: { type: string, examples: [User deleted] }
+        '400':
+          description: '`INVALID_PASSWORD`: senha incorreta. Nada é apagado.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErroAuth' }
+              example: { code: INVALID_PASSWORD, message: Invalid password }
+        '401': { $ref: '#/components/responses/NaoAutenticadoAuth' }
+        '403': { $ref: '#/components/responses/OrigemInvalidaAuth' }
+        '429': { $ref: '#/components/responses/MuitasTentativas' }
+        '500': { $ref: '#/components/responses/ErroInternoAuth' }
+
+  # ───────────────────────────── Lançamentos ─────────────────────────────
+  /api/lancamentos:
+    get:
+      tags: [Lançamentos]
+      operationId: listarLancamentos
+      summary: Lançamentos de um mês
+      description: |
+        Lista do mês (R-02.8), do mais recente para o mais antigo (`data` desc, depois `criadoEm`
+        desc). Com `limite`, devolve só os N primeiros: "Últimos lançamentos" do Início (R-03.6).
+      parameters:
+        - $ref: '#/components/parameters/Ano'
+        - $ref: '#/components/parameters/Mes'
+        - name: limite
+          in: query
+          required: false
+          description: Máximo de itens (1 a 100). Sem ele, o mês inteiro.
+          schema: { type: integer, minimum: 1, maximum: 100 }
+      responses:
+        '200':
+          description: Lançamentos do mês (lista vazia se não houver).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Lancamento' }
+        '400': { $ref: '#/components/responses/ParametrosInvalidos' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '405': { $ref: '#/components/responses/MetodoNaoPermitido' }
+        '500': { $ref: '#/components/responses/Interno' }
+    post:
+      tags: [Lançamentos]
+      operationId: criarLancamento
+      summary: Registra um gasto ou uma entrada
+      description: R-02.1 a R-02.7. A descrição é cifrada antes de gravar.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NovoLancamento' }
+      responses:
+        '201':
+          description: Lançamento criado.
+          headers:
+            Location:
+              description: URL do lançamento criado.
+              schema: { type: string, examples: [/api/lancamentos/6f1c...] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lancamento' }
+        '400': { $ref: '#/components/responses/ErroDeEntrada' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '413': { $ref: '#/components/responses/CorpoGrandeDemais' }
+        '415': { $ref: '#/components/responses/TipoDeConteudoInvalido' }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  /api/lancamentos/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Lançamentos]
+      operationId: obterLancamento
+      summary: Um lançamento
+      responses:
+        '200':
+          description: O lançamento.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lancamento' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '500': { $ref: '#/components/responses/Interno' }
+    put:
+      tags: [Lançamentos]
+      operationId: atualizarLancamento
+      summary: Edita um lançamento (substitui todos os campos)
+      description: R-02.9. Mudar a data move o lançamento para o mês certo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NovoLancamento' }
+      responses:
+        '200':
+          description: Lançamento atualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Lancamento' }
+        '400': { $ref: '#/components/responses/ErroDeEntrada' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '413': { $ref: '#/components/responses/CorpoGrandeDemais' }
+        '415': { $ref: '#/components/responses/TipoDeConteudoInvalido' }
+        '500': { $ref: '#/components/responses/Interno' }
+    delete:
+      tags: [Lançamentos]
+      operationId: excluirLancamento
+      summary: Exclui um lançamento
+      description: R-02.9. A confirmação é feita na tela.
+      responses:
+        '204': { description: Excluído. }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  # ───────────────────────────── Resumo ─────────────────────────────
+  /api/resumo:
+    get:
+      tags: [Resumo]
+      operationId: resumoDoMes
+      summary: Saldo, entradas, gastos e gasto por categoria do mês
+      description: |
+        Spec 03. `saldo = entradas − gastos − guardadoLiquido`, onde
+        `guardadoLiquido = Σ guardar − Σ retirar` dos movimentos de caixinha do mês. Guardar não é
+        gasto e não entra em `porCategoria`. O saldo pode ser negativo. Mês sem dados dá tudo 0.
+      parameters:
+        - $ref: '#/components/parameters/Ano'
+        - $ref: '#/components/parameters/Mes'
+      responses:
+        '200':
+          description: Resumo do mês.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Resumo' }
+        '400': { $ref: '#/components/responses/ParametrosInvalidos' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '405': { $ref: '#/components/responses/MetodoNaoPermitido' }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  # ───────────────────────────── Caixinhas ─────────────────────────────
+  /api/caixinhas:
+    get:
+      tags: [Caixinhas]
+      operationId: listarCaixinhas
+      summary: Todas as caixinhas, por prazo mais próximo
+      description: R-04.1. Cada uma com o saldo atual (Σ guardar − Σ retirar).
+      responses:
+        '200':
+          description: Caixinhas (lista vazia se não houver).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Caixinha' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '405': { $ref: '#/components/responses/MetodoNaoPermitido' }
+        '500': { $ref: '#/components/responses/Interno' }
+    post:
+      tags: [Caixinhas]
+      operationId: criarCaixinha
+      summary: Cria uma caixinha
+      description: R-04.3. O nome é cifrado antes de gravar. O prazo vai de hoje até +10 anos.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DadosCaixinha' }
+      responses:
+        '201':
+          description: Caixinha criada (saldo 0).
+          headers:
+            Location:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Caixinha' }
+        '400': { $ref: '#/components/responses/ErroDeEntrada' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '413': { $ref: '#/components/responses/CorpoGrandeDemais' }
+        '415': { $ref: '#/components/responses/TipoDeConteudoInvalido' }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  /api/caixinhas/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Caixinhas]
+      operationId: obterCaixinha
+      summary: Uma caixinha, com saldo
+      responses:
+        '200':
+          description: A caixinha.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Caixinha' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '500': { $ref: '#/components/responses/Interno' }
+    put:
+      tags: [Caixinhas]
+      operationId: editarCaixinha
+      summary: Edita nome, ícone, meta e prazo
+      description: |
+        R-04.7. Substitui os quatro campos. O prazo novo precisa estar entre hoje e +10 anos;
+        mandar o **mesmo** prazo de antes é sempre aceito, para poder renomear uma caixinha com
+        prazo vencido. Meta abaixo do saldo é permitida (vira "meta atingida").
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DadosCaixinha' }
+      responses:
+        '200':
+          description: Caixinha atualizada.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Caixinha' }
+        '400': { $ref: '#/components/responses/ErroDeEntrada' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '413': { $ref: '#/components/responses/CorpoGrandeDemais' }
+        '415': { $ref: '#/components/responses/TipoDeConteudoInvalido' }
+        '500': { $ref: '#/components/responses/Interno' }
+    delete:
+      tags: [Caixinhas]
+      operationId: excluirCaixinha
+      summary: Exclui uma caixinha com saldo zero
+      description: R-04.7. Com saldo, é preciso retirar antes. Os movimentos vão junto.
+      responses:
+        '204': { description: Excluída. }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409':
+          description: A caixinha ainda tem saldo.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+              example: { erro: caixinha_com_saldo }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  /api/caixinhas/{id}/movimentos:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Caixinhas]
+      operationId: listarMovimentos
+      summary: Histórico de guardar e retirar
+      description: R-04.4. Do mais recente para o mais antigo.
+      responses:
+        '200':
+          description: Movimentos (lista vazia se não houver).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Movimento' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '500': { $ref: '#/components/responses/Interno' }
+    post:
+      tags: [Caixinhas]
+      operationId: movimentarCaixinha
+      summary: Guarda ou retira dinheiro
+      description: |
+        R-04.5. Retirar não pode passar do saldo. A checagem é feita no banco com lock da caixinha:
+        duas retiradas simultâneas que somadas passem do saldo resultam em uma `201` e uma `409`.
+        Movimentos não são editados nem excluídos um a um.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NovoMovimento' }
+      responses:
+        '201':
+          description: Movimento registrado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Movimento' }
+        '400': { $ref: '#/components/responses/ErroDeEntrada' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409':
+          description: Retirada maior que o saldo da caixinha.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Erro' }
+              example: { erro: saldo_insuficiente }
+        '413': { $ref: '#/components/responses/CorpoGrandeDemais' }
+        '415': { $ref: '#/components/responses/TipoDeConteudoInvalido' }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  # ───────────────────────────── Perfil ─────────────────────────────
+  /api/perfil:
+    get:
+      tags: [Perfil]
+      operationId: obterPerfil
+      summary: Perfil de quem está logado
+      description: R-05.1 e R-05.4. O e-mail é só leitura na v1 (R-05.2).
+      responses:
+        '200':
+          description: O perfil.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Perfil' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '405': { $ref: '#/components/responses/MetodoNaoPermitido' }
+        '500': { $ref: '#/components/responses/Interno' }
+    patch:
+      tags: [Perfil]
+      operationId: atualizarPerfil
+      summary: Troca o nome
+      description: R-05.2. Só o nome é editável; qualquer outro campo dá 400 `nao_permitido`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nome]
+              additionalProperties: false
+              properties:
+                nome: { type: string, minLength: 2, maxLength: 40, description: '2 a 40 caracteres após trim.' }
+      responses:
+        '200':
+          description: Perfil atualizado.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Perfil' }
+        '400': { $ref: '#/components/responses/ErroDeEntrada' }
+        '401': { $ref: '#/components/responses/NaoAutenticado' }
+        '403': { $ref: '#/components/responses/OrigemInvalida' }
+        '413': { $ref: '#/components/responses/CorpoGrandeDemais' }
+        '415': { $ref: '#/components/responses/TipoDeConteudoInvalido' }
+        '500': { $ref: '#/components/responses/Interno' }
+
+  # ───────────────────────────── Sistema ─────────────────────────────
+  /api/saude:
+    get:
+      tags: [Sistema]
+      operationId: saude
+      summary: A API está no ar e alcança o banco?
+      security: []
+      responses:
+        '200':
+          description: Tudo certo.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+        '503':
+          description: O banco não respondeu.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: false }
+                  erro: { type: string, const: banco_indisponivel }
+
+components:
+  securitySchemes:
+    sessao:
+      type: apiKey
+      in: cookie
+      name: nubanko.session_token
+      description: |
+        Cookie HttpOnly do Better Auth. Em HTTPS o nome é `__Secure-nubanko.session_token`.
+        Sem ele (ou com sessão expirada), as rotas de domínio respondem 401 `nao_autenticado`.
+
+  headers:
+    SetCookieSessao:
+      description: '`nubanko.session_token=...; Path=/; HttpOnly; SameSite=Lax` (mais `Secure` em HTTPS).'
+      schema: { type: string }
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      description: UUID do recurso. Formato inválido responde 404, como um id inexistente.
+      schema: { type: string, format: uuid }
+    Ano:
+      name: ano
+      in: query
+      required: true
+      schema: { type: integer, minimum: 2000, maximum: 2100, examples: [2026] }
+    Mes:
+      name: mes
+      in: query
+      required: true
+      description: 1 = janeiro, 12 = dezembro.
+      schema: { type: integer, minimum: 1, maximum: 12, examples: [11] }
+
+  schemas:
+    Centavos:
+      type: integer
+      minimum: 1
+      maximum: 99999999
+      description: Valor em centavos (1 = R$ 0,01; 99.999.999 = R$ 999.999,99).
+      examples: [1250]
+
+    Data:
+      type: string
+      format: date
+      description: Data de calendário (YYYY-MM-DD).
+      examples: ['2026-11-26']
+
+    CategoriaGasto:
+      type: string
+      enum: [alimentacao, transporte, lazer, compras, contas, saude, educacao, outros_gasto]
+
+    CategoriaEntrada:
+      type: string
+      enum: [salario, extra, presente, outros_entrada]
+
+    NovoLancamento:
+      type: object
+      required: [tipo, valorCentavos, categoria, data]
+      additionalProperties: false
+      description: |
+        A categoria precisa ser do tipo: gasto usa `CategoriaGasto` e entrada usa
+        `CategoriaEntrada`. Descrição só com espaços vira `null`.
+      properties:
+        tipo: { type: string, enum: [gasto, entrada] }
+        valorCentavos: { $ref: '#/components/schemas/Centavos' }
+        categoria:
+          oneOf:
+            - $ref: '#/components/schemas/CategoriaGasto'
+            - $ref: '#/components/schemas/CategoriaEntrada'
+        descricao:
+          type: [string, 'null']
+          maxLength: 60
+          description: Opcional, até 60 caracteres após trim. Guardada cifrada.
+          examples: [Almoço no bandejão]
+        data:
+          allOf: [{ $ref: '#/components/schemas/Data' }]
+          description: Hoje ou antes (fuso de São Paulo). Data futura dá 400.
+
+    Lancamento:
+      type: object
+      required: [id, tipo, valorCentavos, categoria, descricao, data, criadoEm]
+      properties:
+        id: { type: string, format: uuid }
+        tipo: { type: string, enum: [gasto, entrada] }
+        valorCentavos: { $ref: '#/components/schemas/Centavos' }
+        categoria: { type: string }
+        descricao: { type: [string, 'null'] }
+        data: { $ref: '#/components/schemas/Data' }
+        criadoEm: { type: string, format: date-time }
+      example:
+        id: 6f1c2a8e-5a1b-4c1e-9a1d-0b7f1d2e3c4a
+        tipo: gasto
+        valorCentavos: 1250
+        categoria: alimentacao
+        descricao: Almoço no bandejão
+        data: '2026-11-26'
+        criadoEm: '2026-11-26T15:04:05.000Z'
+
+    Resumo:
+      type: object
+      required: [entradas, gastos, guardadoLiquido, saldo, porCategoria]
+      properties:
+        entradas: { type: integer, minimum: 0, description: Soma das entradas do mês, em centavos. }
+        gastos: { type: integer, minimum: 0, description: Soma dos gastos do mês, em centavos. }
+        guardadoLiquido: { type: integer, description: 'Σ guardar − Σ retirar no mês (pode ser negativo).' }
+        saldo: { type: integer, description: 'entradas − gastos − guardadoLiquido (pode ser negativo).' }
+        porCategoria:
+          type: array
+          description: Só gastos, só categorias com total > 0, do maior para o menor.
+          items:
+            type: object
+            required: [categoria, total]
+            properties:
+              categoria: { $ref: '#/components/schemas/CategoriaGasto' }
+              total: { type: integer, minimum: 1 }
+      example:
+        entradas: 141200
+        gastos: 50000
+        guardadoLiquido: 25000
+        saldo: 66200
+        porCategoria:
+          - { categoria: alimentacao, total: 32000 }
+          - { categoria: transporte, total: 18000 }
+
+    IconeCaixinha:
+      type: string
+      enum: [aparelho, viagem, reserva, estudos, casa, carro, presente, outro]
+
+    DadosCaixinha:
+      type: object
+      required: [nome, icone, metaCentavos, prazo]
+      additionalProperties: false
+      properties:
+        nome:
+          type: string
+          minLength: 1
+          maxLength: 40
+          description: 1 a 40 caracteres após trim. Guardado cifrado.
+          examples: [Celular novo]
+        icone: { $ref: '#/components/schemas/IconeCaixinha' }
+        metaCentavos: { $ref: '#/components/schemas/Centavos' }
+        prazo:
+          allOf: [{ $ref: '#/components/schemas/Data' }]
+          description: De hoje até hoje + 10 anos (R-04.3).
+
+    Caixinha:
+      type: object
+      required: [id, nome, icone, metaCentavos, prazo, saldoCentavos, criadoEm]
+      properties:
+        id: { type: string, format: uuid }
+        nome: { type: string }
+        icone: { $ref: '#/components/schemas/IconeCaixinha' }
+        metaCentavos: { $ref: '#/components/schemas/Centavos' }
+        prazo: { $ref: '#/components/schemas/Data' }
+        saldoCentavos:
+          type: integer
+          minimum: 0
+          description: Σ guardar − Σ retirar. Pode passar da meta.
+        criadoEm: { type: string, format: date-time }
+      example:
+        id: 9b2e7c1a-3d4f-4e5a-8b6c-7d8e9f0a1b2c
+        nome: Celular novo
+        icone: aparelho
+        metaCentavos: 200000
+        prazo: '2027-03-15'
+        saldoCentavos: 80000
+        criadoEm: '2026-11-26T15:04:05.000Z'
+
+    NovoMovimento:
+      type: object
+      required: [tipo, valorCentavos, data]
+      additionalProperties: false
+      properties:
+        tipo: { type: string, enum: [guardar, retirar] }
+        valorCentavos: { $ref: '#/components/schemas/Centavos' }
+        data:
+          allOf: [{ $ref: '#/components/schemas/Data' }]
+          description: Hoje ou antes; pode ser anterior à criação da caixinha.
+
+    Movimento:
+      type: object
+      required: [id, caixinhaId, tipo, valorCentavos, data, criadoEm]
+      properties:
+        id: { type: string, format: uuid }
+        caixinhaId: { type: string, format: uuid }
+        tipo: { type: string, enum: [guardar, retirar] }
+        valorCentavos: { $ref: '#/components/schemas/Centavos' }
+        data: { $ref: '#/components/schemas/Data' }
+        criadoEm: { type: string, format: date-time }
+
+    Perfil:
+      type: object
+      required: [nome, email, criadoEm, versaoPolitica, aceitePoliticaEm]
+      properties:
+        nome: { type: string, description: Decifrado na hora de responder. }
+        email: { type: string, format: email }
+        criadoEm: { type: string, format: date-time, description: 'Data do cadastro ("No NuBanko desde").' }
+        versaoPolitica: { type: string, examples: ['2026-11'] }
+        aceitePoliticaEm: { type: string, format: date-time }
+
+    UsuarioAuth:
+      type: object
+      description: Usuário como o Better Auth devolve. `name` é sempre vazio (o nome real está cifrado no perfil).
+      required: [id, email, name, emailVerified, createdAt, updatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string, const: '' }
+        emailVerified: { type: boolean, description: Sempre false (o app não confirma e-mail). }
+        image: { type: ['null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    SessaoAtual:
+      type: object
+      required: [session, user]
+      properties:
+        session:
+          type: object
+          description: Dados da sessão. O token **não** é devolvido (fica só no cookie).
+          properties:
+            id: { type: string }
+            userId: { type: string, format: uuid }
+            expiresAt: { type: string, format: date-time }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            ipAddress: { type: [string, 'null'], description: Guardado só para segurança das sessões (R-05.4). }
+            userAgent: { type: [string, 'null'] }
+        user: { $ref: '#/components/schemas/UsuarioAuth' }
+
+    Detalhe:
+      type: object
+      required: [campo, problema]
+      properties:
+        campo:
+          type: string
+          description: Nome do campo do corpo ou do parâmetro da query.
+          examples: [valorCentavos]
+        problema:
+          type: string
+          description: |
+            - `obrigatorio`: ausente, `null` ou vazio após trim.
+            - `valor_invalido`: tipo errado ou fora da lista (tipo, categoria, ícone).
+            - `nao_inteiro`: valor em centavos com casas decimais.
+            - `fora_do_intervalo`: número ou data fora dos limites.
+            - `curto_demais` / `longo_demais`: texto fora do tamanho permitido.
+            - `formato_invalido`: data que não é YYYY-MM-DD válida no calendário.
+            - `futura`: data depois de hoje (fuso de São Paulo).
+            - `nao_permitido`: campo que a rota não aceita (ex.: `user_id`).
+          enum: [obrigatorio, valor_invalido, nao_inteiro, fora_do_intervalo, curto_demais, longo_demais, formato_invalido, futura, nao_permitido]
+
+    Erro:
+      type: object
+      required: [erro]
+      description: Erro das rotas de domínio.
+      properties:
+        erro:
+          type: string
+          description: |
+            | Código | Status | Quando |
+            |---|---|---|
+            | `json_invalido` | 400 | Corpo não é um objeto JSON válido |
+            | `dados_invalidos` | 400 | Algum campo do corpo é inválido (ver `detalhes`) |
+            | `parametros_invalidos` | 400 | `ano`, `mes` ou `limite` da query inválidos (ver `detalhes`) |
+            | `nao_autenticado` | 401 | Sem sessão ou sessão expirada |
+            | `origem_invalida` | 403 | Escrita com `Origin` de outro site |
+            | `nao_encontrado` | 404 | Recurso não existe **ou é de outra pessoa**, id mal formado, rota inexistente |
+            | `metodo_nao_permitido` | 405 | Método não suportado (ver cabeçalho `Allow`) |
+            | `saldo_insuficiente` | 409 | Retirada maior que o saldo da caixinha |
+            | `caixinha_com_saldo` | 409 | Exclusão de caixinha com saldo |
+            | `corpo_grande_demais` | 413 | Corpo acima de 16 KiB |
+            | `tipo_de_conteudo_invalido` | 415 | Escrita sem `Content-Type: application/json` |
+            | `interno` | 500 | Erro inesperado (detalhes só no log do servidor) |
+          enum:
+            - json_invalido
+            - dados_invalidos
+            - parametros_invalidos
+            - nao_autenticado
+            - origem_invalida
+            - nao_encontrado
+            - metodo_nao_permitido
+            - saldo_insuficiente
+            - caixinha_com_saldo
+            - corpo_grande_demais
+            - tipo_de_conteudo_invalido
+            - interno
+        detalhes:
+          type: array
+          description: Presente em `dados_invalidos` e `parametros_invalidos`; um item por problema.
+          items: { $ref: '#/components/schemas/Detalhe' }
+
+    ErroAuth:
+      type: object
+      required: [message]
+      description: Erro das rotas /api/auth/* (formato do Better Auth).
+      properties:
+        code:
+          type: string
+          description: |
+            Códigos usados pelo app: `SENHA_FRACA`, `NOME_INVALIDO`, `ACEITE_OBRIGATORIO`,
+            `VALIDATION_ERROR`, `PASSWORD_TOO_LONG`, `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL`,
+            `INVALID_EMAIL_OR_PASSWORD`, `INVALID_PASSWORD`, `INVALID_TOKEN`, `UNAUTHORIZED`,
+            `INVALID_ORIGIN`, `INVALID_REDIRECT_URL`, `MISSING_OR_NULL_ORIGIN`.
+          examples: [INVALID_EMAIL_OR_PASSWORD]
+        message:
+          type: string
+          description: Texto técnico em inglês (ou em pt-BR nos códigos do NuBanko). O front mostra a própria mensagem.
+
+  responses:
+    ErroDeEntrada:
+      description: |
+        Corpo inválido. `json_invalido` quando não é um objeto JSON; `dados_invalidos` com
+        `detalhes` (um item por campo com problema) quando algum campo não passa nas regras.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          examples:
+            valorZero:
+              summary: Valor fora do intervalo
+              value: { erro: dados_invalidos, detalhes: [{ campo: valorCentavos, problema: fora_do_intervalo }] }
+            dataFutura:
+              summary: Data depois de hoje
+              value: { erro: dados_invalidos, detalhes: [{ campo: data, problema: futura }] }
+            categoriaDeOutroTipo:
+              summary: Categoria de entrada num gasto
+              value: { erro: dados_invalidos, detalhes: [{ campo: categoria, problema: valor_invalido }] }
+            campoDeDono:
+              summary: Tentativa de escolher o dono
+              value: { erro: dados_invalidos, detalhes: [{ campo: user_id, problema: nao_permitido }] }
+            jsonInvalido:
+              summary: Corpo mal formado
+              value: { erro: json_invalido }
+    ParametrosInvalidos:
+      description: '`ano`, `mes` ou `limite` ausentes ou fora do intervalo.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: parametros_invalidos, detalhes: [{ campo: mes, problema: fora_do_intervalo }] }
+    NaoAutenticado:
+      description: Sem sessão válida. O front leva para o login e volta depois (R-01.9).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: nao_autenticado }
+    OrigemInvalida:
+      description: Escrita com `Origin` de outro site (R-00.7).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: origem_invalida }
+    NaoEncontrado:
+      description: |
+        O recurso não existe **ou pertence a outra pessoa** (a resposta é idêntica nos dois casos),
+        ou o id não é um UUID.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: nao_encontrado }
+    MetodoNaoPermitido:
+      description: Método HTTP não suportado nesta rota.
+      headers:
+        Allow:
+          description: Métodos aceitos.
+          schema: { type: string, examples: ['GET, POST'] }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: metodo_nao_permitido }
+    CorpoGrandeDemais:
+      description: Corpo acima de 16 KiB.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: corpo_grande_demais }
+    TipoDeConteudoInvalido:
+      description: 'Escrita sem `Content-Type: application/json`.'
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: tipo_de_conteudo_invalido }
+    Interno:
+      description: Erro inesperado. Detalhes só no log do servidor.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Erro' }
+          example: { erro: interno }
+
+    NaoAutenticadoAuth:
+      description: Sem sessão válida.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroAuth' }
+          example: { code: UNAUTHORIZED, message: Unauthorized }
+    OrigemInvalidaAuth:
+      description: Escrita com `Origin` de outro site (`INVALID_ORIGIN`) ou sem origem com cookie (`MISSING_OR_NULL_ORIGIN`).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroAuth' }
+          example: { code: INVALID_ORIGIN, message: Invalid origin }
+    MuitasTentativas:
+      description: |
+        Rate limit excedido (R-01.12), contado por IP no banco. Limites por minuto: login 5,
+        cadastro 3, pedido de redefinição 3, troca de senha 5, exclusão de conta 5; demais 100.
+      headers:
+        X-Retry-After:
+          description: Segundos até poder tentar de novo.
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroAuth' }
+          example: { message: Too many requests. Please try again later. }
+    ErroInternoAuth:
+      description: Erro inesperado no Better Auth.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErroAuth' }
