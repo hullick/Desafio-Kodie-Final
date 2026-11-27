@@ -5,6 +5,7 @@ import pg from 'pg';
 import { checarSenha, nomeValido } from '../../web/src/app/core/calculos/senha.ts';
 import { cifrar } from './cripto.ts';
 import { emailRedefinicao, enviarEmail } from './email.ts';
+import { urlDoSite } from './site.ts';
 
 /**
  * Better Auth em /api/auth/* (spec 01, ADR 0001). Faz hash de senha (scrypt), sessão em cookie
@@ -21,8 +22,7 @@ export const POLITICA_VERSAO = '2026-11';
 
 const url = process.env['DATABASE_URL_AUTH'];
 if (!url) throw new Error('DATABASE_URL_AUTH não definida');
-const baseURL = process.env['BETTER_AUTH_URL'];
-if (!baseURL) throw new Error('BETTER_AUTH_URL não definida');
+const baseURL = urlDoSite();
 
 const erro = (status: 'BAD_REQUEST', code: string, message: string) => new APIError(status, { code, message });
 
