@@ -79,15 +79,14 @@ Rode dentro de `web/`.
 - API em `/api/*` (contrato em `docs/api/openapi.yaml`): Better Auth em `/api/auth/*` (cadastro sem confirmação de e-mail, login, sessão, saída, redefinição e troca de senha, exclusão de conta, rate limit) e as functions de lançamentos, resumo, caixinhas e perfil, todas com `comUsuario` + RLS.
 - Textos das pessoas cifrados no banco (seção 13.8).
 - Repositórios HTTP no front (`core/dados/http/`), com guarda de rota que consulta a sessão e interceptor que leva ao login quando ela expira.
-- Testes: pgTAP do banco, integração das functions e unidade/componente do front.
+- Telas de esqueci a senha, nova senha, alterar senha e excluir conta.
+- Testes: pgTAP do banco, integração das functions, unidade/componente do front e E2E com Playwright (com axe) nos dois tamanhos de tela (seção 7.1).
 
 **Ainda não existe:**
 
 | Falta | Onde está planejado |
 |-------|---------------------|
 | Hospedagem e CI/CD (deploy previews, homologação e produção na Netlify) | Spec 00, "Hospedagem e deploy"; plan próprio a escrever |
-| Testes E2E com Playwright (o pacote está instalado, mas ainda não há configuração) | Plan 00, tarefa 8 |
-| Telas de Alterar senha, Excluir conta, Esqueci a senha e Nova senha. A API e os métodos do `SessaoRepositorio` já existem | Plans 01 e 05 |
 | Fechar o sheet com o botão voltar do Android (U-02.6). Hoje fecha com Esc e com toque no fundo. | Plan 02 |
 | Os 4 agentes e a matriz de rastreabilidade | Plan 00, tarefa 9 |
 
@@ -273,7 +272,26 @@ Edite `core/dados/memoria/semente.ts`. As datas são relativas a hoje. Alguns te
 | Unidade (regras, formatação, datas) | Vitest | `core/**/*.spec.ts` |
 | Componente (átomos a templates) | Vitest + TestBed (jsdom) | ao lado de cada componente |
 | Facade | Vitest + TestBed + repositórios em memória | `pages/**/*.facade.spec.ts` |
-| E2E, usabilidade e axe | Playwright | *ainda não configurado* |
+| Banco (regras, RLS com duas pessoas) | pgTAP | `db/tests/` (seção 13) |
+| API (functions contra o banco do compose) | Vitest | `netlify/testes/` (seção 13.4) |
+| E2E, usabilidade e acessibilidade (axe) | Playwright, contra o app real do compose | `web/e2e/*.e2e.ts` |
+
+### 7.1 E2E com Playwright
+
+Roda no navegador contra o app real em `localhost:8888` (Angular + API + Postgres + Mailpit), em 360×740 e 390×844.
+
+```bash
+NUBANKO_RATE_LIMIT=desligado docker compose up -d   # a suíte cria várias contas do mesmo IP
+cd web
+npx playwright install chromium                      # só na primeira vez
+npm run e2e                                          # relatório em web/playwright-report/
+docker compose up -d app                             # depois: religa o rate limit
+```
+
+- Cada teste cria a própria conta (`cadastrarPelaApi` de `e2e/apoio.ts`, e-mails `@e2e.nubanko.dev`), então os testes não dependem uns dos outros.
+- O e-mail de redefinição de senha é lido pela API do Mailpit (`ultimoEmail`).
+- `05-acessibilidade.e2e.ts` passa o axe (WCAG 2.1 A/AA) nas telas e falha com qualquer violação séria ou crítica.
+- Para apagar as contas de teste do banco local: `docker compose exec db psql -U postgres -d nubanko -c "delete from auth.\"user\" where email like '%@e2e.nubanko.dev'"`.
 
 ### Helpers (`web/src/testing/`)
 

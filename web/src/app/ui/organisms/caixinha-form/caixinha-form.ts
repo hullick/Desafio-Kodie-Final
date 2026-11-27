@@ -55,9 +55,9 @@ const MAX_NOME = 40;
           <span class="font-display text-xl font-extrabold text-brand-ink tabular">{{ s.valor }}/mês</span>
         </p>
         <nb-progress-bar class="mt-2" [valor]="s.progresso" rotulo="Quanto já foi guardado" />
-        <p class="mt-2 text-sm text-muted">Guardando esse valor por {{ s.meses }} {{ s.meses === 1 ? 'mês' : 'meses' }}, você chega lá.</p>
+        <p class="mt-2 text-sm text-ink/75">Guardando esse valor por {{ s.meses }} {{ s.meses === 1 ? 'mês' : 'meses' }}, você chega lá.</p>
       } @else {
-        <p class="mt-2 text-sm text-muted">Informe o valor para ver quanto guardar por mês.</p>
+        <p class="mt-2 text-sm text-ink/75">Informe o valor para ver quanto guardar por mês.</p>
       }
     </section>
 

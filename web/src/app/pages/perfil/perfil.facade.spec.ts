@@ -17,6 +17,7 @@ describe('PerfilFacade (spec 05)', () => {
       [{ path: 'perfil', component: Pagina }, { path: 'entrar', component: Vazio }], PerfilFacade, [proverDadosEmMemoria()]);
     expect(f.vm()).toEqual({ nome: 'Larissa Santos', email: 'lari@exemplo.com', desde: rotuloMesCurto(somarMeses(mesAtual(), -1)) });
     expect(f.versao).toBe('0.1.0');
+    expect(f.itens.map((i) => i.rota)).toEqual(['/perfil/dados', '/perfil/senha', '/privacidade']);
     await f.sair();
     expect(TestBed.inject(SessaoRepositorio).autenticado()).toBe(false);
     expect(router.url).toBe('/entrar');

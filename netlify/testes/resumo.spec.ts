@@ -54,5 +54,6 @@ describe('/api/resumo', () => {
     const r = await chamar(resumo, 'GET', `/api/resumo?ano=${ano}&mes=13`, { conta: a });
     expect(await r.json()).toEqual({ erro: 'parametros_invalidos', detalhes: [{ campo: 'mes', problema: 'fora_do_intervalo' }] });
     expect((await chamar(resumo, 'POST', '/api/resumo', { conta: a })).status).toBe(405);
+    expect((await chamar(resumo, 'GET', '/api/resumo/index.html', { conta: a })).status).toBe(404);
   });
 });

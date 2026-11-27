@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { Config, Context } from '@netlify/functions';
+import type { Config } from '@netlify/functions';
 import type { PoolClient } from 'pg';
 import { comUsuario } from '../lib/com-usuario.ts';
 import { cifrar, decifrar } from '../lib/cripto.ts';
-import { ErroHttp, idDaRota, json, lerCorpo, metodoNaoPermitido, semConteudo, tratar } from '../lib/http.ts';
+import { ErroHttp, casarRota, json, lerCorpo, metodoNaoPermitido, semConteudo, tratar } from '../lib/http.ts';
 import { Validador, hojeSP, somarAnos } from '../lib/validacao.ts';
 
 /**
@@ -116,8 +116,9 @@ async function movimentos(req: Request, id: string): Promise<Response> {
   return metodoNaoPermitido(['GET', 'POST']);
 }
 
-export default tratar(async (req: Request, ctx: Context) => {
-  if (ctx.params?.['id'] === undefined) {
+export default tratar(async (req: Request) => {
+  const rota = casarRota(req, 'caixinhas', ['movimentos']);
+  if (!rota.id) {
     if (req.method === 'GET') {
       return comUsuario(req, async (db, usuarioId) => {
         const r = await db.query<LinhaCaixinha>(
@@ -139,8 +140,8 @@ export default tratar(async (req: Request, ctx: Context) => {
     return metodoNaoPermitido(['GET', 'POST']);
   }
 
-  const id = idDaRota(ctx);
-  if (new URL(req.url).pathname.endsWith('/movimentos')) return movimentos(req, id);
+  const id = rota.id;
+  if (rota.sub === 'movimentos') return movimentos(req, id);
 
   if (req.method === 'GET') {
     return comUsuario(req, async (db, usuarioId) => json(await obter(db, id, usuarioId)));

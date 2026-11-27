@@ -96,6 +96,15 @@ describe('/api/caixinhas', () => {
     expect(intacta).toMatchObject({ nome: 'Celular novo', saldoCentavos: 300 });
   });
 
+  it('caminhos com sufixo (tentativas do netlify dev após um 404) não caem na lista', async () => {
+    const c = await criar(a);
+    for (const sufixo of ['/index.html', '.html', '/movimentos/index.html', '/outra-coisa']) {
+      const r = await chamar(handler, 'GET', `/api/caixinhas/${c.id}${sufixo}`, { conta: b });
+      expect(r.status, sufixo).toBe(404);
+    }
+    expect((await chamar(handler, 'GET', '/api/caixinhas/nao-e-uuid', { conta: a })).status).toBe(404);
+  });
+
   it('sem sessão, 401', async () => {
     expect((await chamar(handler, 'GET', '/api/caixinhas')).status).toBe(401);
     expect((await chamar(handler, 'POST', '/api/caixinhas', { corpo: dados() })).status).toBe(401);

@@ -1,7 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { comUsuario } from '../lib/com-usuario.ts';
 import { cifrar, decifrar } from '../lib/cripto.ts';
-import { json, lerCorpo, metodoNaoPermitido, tratar } from '../lib/http.ts';
+import { casarRota, ErroHttp, json, lerCorpo, metodoNaoPermitido, tratar } from '../lib/http.ts';
 import { Validador } from '../lib/validacao.ts';
 
 /**
@@ -19,6 +19,7 @@ interface Linha {
 }
 
 export default tratar(async (req: Request) => {
+  if (casarRota(req, 'perfil').id) throw new ErroHttp(404, 'nao_encontrado');
   if (req.method !== 'GET' && req.method !== 'PATCH') return metodoNaoPermitido(['GET', 'PATCH']);
 
   let nome: string | undefined;

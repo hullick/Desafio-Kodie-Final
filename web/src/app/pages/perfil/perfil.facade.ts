@@ -9,6 +9,7 @@ import { environment } from '../../../environments/environment';
 
 const ITENS: readonly ItemConfiguracaoVM[] = [
   { icone: 'id-card', titulo: 'Seus dados', subtitulo: 'Nome e e-mail', rota: '/perfil/dados' },
+  { icone: 'key-round', titulo: 'Alterar senha', subtitulo: 'Troque sua senha de acesso', rota: '/perfil/senha' },
   { icone: 'shield-check', titulo: 'Privacidade', subtitulo: 'O que coletamos e por quê', rota: '/privacidade' },
 ];
 

@@ -6,6 +6,14 @@ export const routes: Routes = [
   { path: 'entrar', title: 'Entrar · NuBanko', loadComponent: () => import('./pages/entrar/entrar.page').then((m) => m.EntrarPage) },
   { path: 'cadastro', title: 'Criar conta · NuBanko', loadComponent: () => import('./pages/cadastro/cadastro.page').then((m) => m.CadastroPage) },
   {
+    path: 'esqueci-senha', title: 'Esqueci a senha · NuBanko',
+    loadComponent: () => import('./pages/esqueci-senha/esqueci-senha.page').then((m) => m.EsqueciSenhaPage),
+  },
+  {
+    path: 'nova-senha', title: 'Nova senha · NuBanko',
+    loadComponent: () => import('./pages/nova-senha/nova-senha.page').then((m) => m.NovaSenhaPage),
+  },
+  {
     path: 'privacidade', title: 'Privacidade · NuBanko',
     loadComponent: () => import('./pages/privacidade/privacidade.page').then((m) => m.PrivacidadePage),
   },
@@ -37,6 +45,14 @@ export const routes: Routes = [
       {
         path: 'perfil/dados', title: 'Seus dados · NuBanko',
         loadComponent: () => import('./pages/perfil-dados/perfil-dados.page').then((m) => m.PerfilDadosPage),
+      },
+      {
+        path: 'perfil/senha', title: 'Alterar senha · NuBanko',
+        loadComponent: () => import('./pages/alterar-senha/alterar-senha.page').then((m) => m.AlterarSenhaPage),
+      },
+      {
+        path: 'perfil/excluir', title: 'Excluir minha conta · NuBanko',
+        loadComponent: () => import('./pages/excluir-conta/excluir-conta.page').then((m) => m.ExcluirContaPage),
       },
     ],
   },
