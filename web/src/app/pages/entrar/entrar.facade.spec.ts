@@ -32,4 +32,14 @@ describe('EntrarFacade (spec 01)', () => {
     await f.entrar({ email: 'lari@exemplo.com', senha: 'x' });
     expect(router.url).toBe('/inicio');
   });
+
+  it('mostra só avisos conhecidos deixados por outras telas', async () => {
+    const { servico: f } = await abrir('/entrar?aviso=conta-excluida');
+    expect(f.aviso()).toBe('Sua conta e seus dados foram apagados.');
+  });
+
+  it('ignora aviso desconhecido', async () => {
+    const { servico: f } = await abrir('/entrar?aviso=qualquer-coisa');
+    expect(f.aviso()).toBeNull();
+  });
 });

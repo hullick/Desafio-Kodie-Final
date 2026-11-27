@@ -22,6 +22,16 @@ describe('exigirSessao (R-01.9)', () => {
     expect(router.url).toBe('/caixinhas');
   });
 
+  it('ao abrir o app, consulta o servidor antes de decidir', async () => {
+    const sessao = TestBed.inject(SessaoRepositorio);
+    sessao.encerrarLocalmente();
+    const verificar = vi.spyOn(sessao, 'verificar').mockResolvedValue(true);
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/caixinhas');
+    expect(verificar).toHaveBeenCalled();
+    expect(router.url).toBe('/caixinhas');
+  });
+
   it('sem sessão manda para o login guardando a rota pedida', async () => {
     await TestBed.inject(SessaoRepositorio).sair();
     const router = TestBed.inject(Router);

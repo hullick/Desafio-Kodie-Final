@@ -11,9 +11,9 @@ Dar à Lari controle e transparência sobre os dados dela: o que o app guarda, c
 | R-05.1 | O topo mostra o avatar com as iniciais, o nome, o e-mail e "No NuBanko desde {mês/ano}" (data real do cadastro). | mockup, ajustado |
 | R-05.2 | "Seus dados" permite editar o nome. O e-mail aparece só para leitura na v1. | proposta: troca de e-mail exige fluxo de confirmação; fica fora da v1 |
 | R-05.3 | "Alterar senha" pede a senha atual, a nova e a confirmação, com a regra do R-01.2. | mockup |
-| R-05.4 | "Privacidade" mostra, em linguagem simples: quais dados coletamos (nome, e-mail, senha protegida, lançamentos e caixinhas que você cria), para quê, o que **não** coletamos, link para a Política completa e a data e versão do aceite. | resumo (coleta mínima, transparência) |
+| R-05.4 | "Privacidade" mostra, em linguagem simples: quais dados coletamos (nome, e-mail, senha protegida, lançamentos e caixinhas que você cria, e o IP e o navegador de cada sessão ativa, usados só para segurança), para quê, o que **não** coletamos, link para a Política completa e a data e versão do aceite. | resumo (coleta mínima, transparência) |
 | R-05.5 | "Sair" encerra a sessão no aparelho e volta ao login. | mockup |
-| R-05.6 | "Excluir minha conta" pede para digitar "EXCLUIR" e a senha. Apaga o usuário e, em cascata, todos os dados, de forma definitiva, via função `security definer` que só apaga `auth.uid()`. Termina no login com a mensagem "Sua conta e seus dados foram apagados". | proposta; LGPD art. 18 |
+| R-05.6 | "Excluir minha conta" pede para digitar "EXCLUIR" e a senha. Apaga o usuário e, em cascata, todos os dados e sessões, de forma definitiva, pela exclusão de conta do Better Auth (que confere a senha e só apaga o usuário da sessão atual). Termina no login com a mensagem "Sua conta e seus dados foram apagados". | proposta; LGPD art. 18 |
 | R-05.7 | "Baixar meus dados" **não** entra (exportação está fora do escopo). Fica registrado como pendência de LGPD para a v2. | resumo |
 | R-05.8 | O rodapé mostra a versão real do build. | proposta |
 
@@ -31,4 +31,4 @@ Referência: `design/perfil_nubanko`, sem CPF, telefone, endereço, biometria, f
 
 ## Testes mínimos
 
-pgTAP para a função de exclusão (apaga só o próprio usuário e tudo em cascata, e B continua intacto); componente para os formulários; Playwright para editar o nome, alterar a senha (logar com a nova), sair, excluir a conta (e não conseguir mais logar) e as rotas protegidas depois do logout.
+pgTAP para a cascata de exclusão (apagar o usuário em `auth."user"` leva perfil, sessões, lançamentos, caixinhas e movimentos, e B continua intacto); integração para a exclusão pela API (senha errada não apaga nada); componente para os formulários; Playwright para editar o nome, alterar a senha (logar com a nova), sair, excluir a conta (e não conseguir mais logar) e as rotas protegidas depois do logout.

@@ -1,12 +1,15 @@
 {
   "name": "nubanko-web",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "license": "MIT",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "start:demo": "ng serve --configuration demo",
+    "e2e": "playwright test"
   },
   "private": true,
   "packageManager": "npm@11.20.0",

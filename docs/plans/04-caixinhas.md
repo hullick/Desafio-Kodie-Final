@@ -4,7 +4,7 @@
 
 **Objetivo:** criar metas, guardar e retirar, ver o progresso e o valor sugerido por mês.
 
-**Arquitetura:** tabelas `caixinhas` e `movimentos_caixinha`, com as regras de integridade no banco (dono, saldo suficiente, exclusão só com saldo zero) e a view `caixinhas_com_saldo` (`security_invoker`). Os cálculos de meta são uma função pura no front.
+**Arquitetura:** tabelas `caixinhas` e `movimentos_caixinha`, com as regras de integridade no banco (dono, saldo suficiente, exclusão só com saldo zero) e a view `caixinhas_com_saldo` (`security_invoker`), expostas por `caixinhas.mts` em `/api/caixinhas`. Os cálculos de meta são uma função pura no front.
 
 **Stack:** a do plan 00.
 
@@ -30,13 +30,13 @@
 
 ### Tarefa 1: tabelas, regras e view
 
-**Arquivos:** criar `supabase/migrations/20261201000300_caixinhas.sql`, `supabase/tests/04_caixinhas.test.sql`
+**Arquivos:** criar `db/migrations/20261201000300_caixinhas.sql`, `db/tests/04_caixinhas.test.sql`
 
 **Interfaces:**
 - Produz:
-  - `public.caixinhas(id, user_id default auth.uid(), nome text check 1..40 após trim, icone text check in (...), meta_centavos bigint check 1..99999999, prazo date (trigger em insert e em update que muda o prazo: recusa antes de hoje em America/Sao_Paulo ou depois de +10 anos), criado_em, atualizado_em)`
-  - `public.movimentos_caixinha(id, user_id default auth.uid(), caixinha_id uuid references caixinhas on delete cascade, tipo text check in ('guardar','retirar'), valor_centavos bigint check 1..99999999, data date, criado_em)`
-  - RLS de dono nas duas; `impedir_troca_de_dono` nas duas
+  - `public.caixinhas(id, user_id text default app.usuario_id() references auth."user"(id) on delete cascade, nome text check 1..40 após trim, icone text check in (...), meta_centavos bigint check 1..99999999, prazo date (trigger em insert e em update que muda o prazo: recusa antes de hoje em America/Sao_Paulo ou depois de +10 anos), criado_em, atualizado_em)`
+  - `public.movimentos_caixinha(id, user_id text default app.usuario_id() references auth."user"(id) on delete cascade, caixinha_id uuid references caixinhas on delete cascade, tipo text check in ('guardar','retirar'), valor_centavos bigint check 1..99999999, data date, criado_em)`
+  - RLS (com `force`) de dono nas duas, com grants para `nubanko_app`; `impedir_troca_de_dono` nas duas
   - trigger `validar_movimento` (before insert): garante que a caixinha é do mesmo `user_id`, aplica `for update` na caixinha, recusa `retirar` acima do saldo (`raise exception 'saldo_insuficiente'`) e recusa data futura (SP)
   - trigger `validar_exclusao_caixinha` (before delete): com saldo ≠ 0, `raise exception 'caixinha_com_saldo'`
   - movimentos sem update: são apagados e criados de novo
@@ -51,7 +51,22 @@
 - [ ] **Passos 2 a 4:** FAIL → migração → PASS (`dbtest` completo).
 - [ ] **Passo 5:** commit `feat(R-04.5): cria caixinhas e movimentos com regras no banco`.
 
-### Tarefa 2: cálculo da meta
+### Tarefa 2: API de caixinhas
+
+**Arquivos:** criar `netlify/functions/caixinhas.mts`, `netlify/functions/caixinhas.spec.ts`
+
+**Interfaces:**
+- Consome: `comUsuario`, `tratar`, `lerCorpo`, `json` (plan 00).
+- Produz (`config = { path: ['/api/caixinhas', '/api/caixinhas/:id', '/api/caixinhas/:id/movimentos'] }`), em camelCase, lendo da view `caixinhas_com_saldo`:
+  - `GET /api/caixinhas` (por prazo asc) · `GET /api/caixinhas/:id` · `POST /api/caixinhas` → `201` · `PUT /api/caixinhas/:id` · `DELETE /api/caixinhas/:id` → `204`
+  - `GET /api/caixinhas/:id/movimentos` (mais recente primeiro) · `POST /api/caixinhas/:id/movimentos` → `201`
+  - `saldo_insuficiente` e `caixinha_com_saldo` viram `409 { erro: <codigo> }`; caixinha inexistente ou de outra pessoa, `404`
+
+- [ ] **Passo 1:** testes de integração: CRUD e movimentos felizes como A; retirar acima do saldo dá `409 saldo_insuficiente`; excluir com saldo dá `409 caixinha_com_saldo`; B recebe `404` em todas as rotas com o id de A, inclusive `POST .../movimentos`; sem sessão, `401`; duas retiradas em paralelo que somadas passam do saldo: uma dá `201` e a outra `409`.
+- [ ] **Passos 2 a 4:** FAIL → implementar → PASS, incluindo o guarda das functions.
+- [ ] **Passo 5:** commit `feat(R-04.5): adiciona API de caixinhas`.
+
+### Tarefa 3: cálculo da meta
 
 **Arquivos:** criar `features/caixinhas/meta.ts` + spec
 
@@ -75,7 +90,7 @@ calcularMeta({ metaCentavos: 50000, saldoCentavos: 10000, prazo: '2026-11-24' },
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(R-04.2): adiciona cálculo de valor sugerido por mês`.
 
-### Tarefa 3: `CaixinhasService`
+### Tarefa 4: `CaixinhasService`
 
 **Arquivos:** criar `features/caixinhas/caixinhas.service.ts` + spec
 
@@ -86,11 +101,11 @@ calcularMeta({ metaCentavos: 50000, saldoCentavos: 10000, prazo: '2026-11-24' },
   - `CaixinhasService { listar(): Promise<Caixinha[]>; obter(id): Promise<Caixinha>; criar(c): Promise<Caixinha>; editar(id, c): Promise<Caixinha>; excluir(id): Promise<void>; movimentos(id): Promise<Movimento[]>; movimentar(id, m: Omit<Movimento,'id'>): Promise<void> }`
   - os erros `saldo_insuficiente` e `caixinha_com_saldo` viram `ErroCaixinha` com o código; toda escrita chama `DadosAlterados.notificar()`; o prazo vai e volta como `date` (YYYY-MM-DD), sem conversão.
 
-- [ ] **Passo 1:** testes com o client mockado: `listar` ordena por prazo asc; `'2027-02-15'` grava `'2027-02-15'`; o erro do PostgREST com `saldo_insuficiente` vira `ErroCaixinha('saldo_insuficiente')`; escritas notificam.
+- [ ] **Passo 1:** testes com `HttpTestingController`: `listar` chama `GET /api/caixinhas`; `'2027-02-15'` vai no corpo como `'2027-02-15'`; um `409 { erro: 'saldo_insuficiente' }` vira `ErroCaixinha('saldo_insuficiente')`; escritas notificam.
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(R-04.4): adiciona serviço de caixinhas`.
 
-### Tarefa 4: componentes de progresso e card
+### Tarefa 5: componentes de progresso e card
 
 **Arquivos:** criar `shared/ui/progress-bar/*`, `shared/ui/progress-ring/*`, `features/caixinhas/caixinha-card/*` + specs
 
@@ -101,12 +116,12 @@ calcularMeta({ metaCentavos: 50000, saldoCentavos: 10000, prazo: '2026-11-24' },
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(U-04.5): adiciona componentes de progresso e card de caixinha`.
 
-### Tarefa 5: telas
+### Tarefa 6: telas
 
 **Arquivos:** criar `features/caixinhas/{lista,form,detalhe,movimento-sheet}/*` + specs; rotas `/caixinhas`, `/caixinhas/nova`, `/caixinhas/:id`, `/caixinhas/:id/editar`
 
 **Interfaces:**
-- Consome: as tarefas 2 a 4, `nb-numeric-keypad`, `teclar`, `nb-bottom-sheet`, `ToastService`, `DadosAlterados`.
+- Consome: as tarefas 3 a 5, `nb-numeric-keypad`, `teclar`, `nb-bottom-sheet`, `ToastService`, `DadosAlterados`.
 - Produz: `MovimentoSheet` aberto por `abrirMovimento(caixinhaId, tipo)`, usado na lista e no detalhe.
 
 - [ ] **Passo 1:** testes de componente:
@@ -117,7 +132,7 @@ calcularMeta({ metaCentavos: 50000, saldoCentavos: 10000, prazo: '2026-11-24' },
 - [ ] **Passos 2 a 4:** FAIL → implementar seguindo os mockups, sem CDI, nível, prioridade, filtro, Pix e mensagem motivacional → PASS.
 - [ ] **Passo 5:** commit `feat(R-04.1): adiciona telas de caixinhas`.
 
-### Tarefa 6: e2e e usabilidade
+### Tarefa 7: e2e e usabilidade
 
 **Arquivos:** criar `web/e2e/04-caixinhas.spec.ts`
 

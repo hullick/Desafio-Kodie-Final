@@ -4,7 +4,7 @@
 
 **Objetivo:** a pessoa vê e edita o nome, troca a senha, entende quais dados o app guarda, sai e apaga a conta inteira.
 
-**Arquitetura:** o nome é atualizado em `perfis` (grant de coluna do plan 01); a senha, com reautenticação + `auth.updateUser`; a exclusão, com reautenticação + RPC `excluir_minha_conta()` (`security definer`), que apaga `auth.users` do próprio uid e leva tudo em cascata.
+**Arquitetura:** o nome é lido e atualizado em `perfis` (grant de coluna do plan 01) pela function `perfil.mts` (`/api/perfil`); a senha, com `changePassword` do Better Auth, que confere a senha atual; a exclusão, com `deleteUser({ password })` do Better Auth, que confere a senha e apaga `auth."user"` da sessão atual, levando perfil, sessões e todos os dados em cascata.
 
 **Stack:** a do plan 00.
 
@@ -27,26 +27,27 @@
 
 ---
 
-### Tarefa 1: RPC de exclusão de conta
+### Tarefa 1: cascata de exclusão e API de perfil
 
-**Arquivos:** criar `supabase/migrations/20261201000500_excluir_conta.sql`, `supabase/tests/05_excluir_conta.test.sql`
+**Arquivos:** criar `db/migrations/20261201000500_perfil.sql`, `db/tests/05_exclusao_em_cascata.test.sql`, `netlify/functions/perfil.mts`, `netlify/functions/perfil.spec.ts`
 
 **Interfaces:**
-- Produz: `public.excluir_minha_conta() returns void` (`security definer`, `set search_path = ''`, `delete from auth.users where id = auth.uid()`); se `auth.uid()` for nulo, `raise exception`; `revoke` de `public` e `anon`, `grant` só para `authenticated`.
+- Produz: `GET /api/perfil` → `{ nome, email, criadoEm, versaoPolitica, aceitePoliticaEm }` (o `email` e o `criadoEm` vêm de `auth."user"`, lidos com uma função `security definer` `public.meu_email_e_cadastro()` que só devolve a linha de `app.usuario_id()`); `PATCH /api/perfil` com `{ nome }` → perfil atualizado. Exclusão e troca de senha não ganham endpoint próprio: usam `/api/auth/delete-user` e `/api/auth/change-password`.
 
-- [ ] **Passo 1:** testes pgTAP: A, com perfil, lançamentos, caixinhas e movimentos, executa a função e depois todas as tabelas têm 0 linhas de A, enquanto as de B continuam intactas (contagem antes e depois); anônimo recebe erro de permissão; a função não aceita parâmetros (não há como apagar outra pessoa).
-- [ ] **Passos 2 a 4:** FAIL → migração → PASS (`dbtest` completo).
-- [ ] **Passo 5:** commit `feat(R-05.6): adiciona exclusão definitiva da própria conta`.
+- [ ] **Passo 1:** testes pgTAP: A, com perfil, sessões, lançamentos, caixinhas e movimentos; `delete from auth."user" where id = A` deixa 0 linhas de A em todas as tabelas, e as de B continuam intactas (contagem antes e depois); `meu_email_e_cadastro()` sem `app.user_id` devolve vazio.
+- [ ] **Passo 2:** testes de integração: `GET`/`PATCH /api/perfil` como A; `PATCH` com `versaoPolitica` dá `400`; sem sessão, `401`; `delete-user` com senha errada não apaga nada; com a senha certa, apaga tudo de A e a sessão antiga passa a receber `401` (inclusive em outro "aparelho", isto é, outro cookie de A).
+- [ ] **Passos 3 a 5:** FAIL → migração e function → PASS (`dbtest` e integração completos).
+- [ ] **Passo 6:** commit `feat(R-05.6): adiciona API de perfil e cobre exclusão em cascata`.
 
 ### Tarefa 2: `PerfilService`
 
 **Arquivos:** criar `features/perfil/perfil.service.ts` + spec
 
 **Interfaces:**
-- Consome: `SUPABASE`, `AuthService`.
-- Produz: `type Perfil = { nome; email; criadoEm: string; versaoPolitica; aceitePoliticaEm }`; `PerfilService { perfil: Signal<Perfil | null>; carregar(): Promise<void>; atualizarNome(nome): Promise<void>; alterarSenha(atual, nova): Promise<void>; excluirConta(senha): Promise<void> }`. `alterarSenha` e `excluirConta` reautenticam com `signInWithPassword` antes e lançam `ErroPerfil('Senha atual incorreta')` se falhar. `excluirConta` chama a RPC e depois `AuthService.sair()`.
+- Consome: `HttpClient` (`/api/perfil`), `AUTH_CLIENT`, `AuthService`.
+- Produz: `type Perfil = { nome; email; criadoEm: string; versaoPolitica; aceitePoliticaEm }`; `PerfilService { perfil: Signal<Perfil | null>; carregar(): Promise<void>; atualizarNome(nome): Promise<void>; alterarSenha(atual, nova): Promise<void>; excluirConta(senha): Promise<void> }`. `alterarSenha` chama `changePassword({ currentPassword, newPassword, revokeOtherSessions: true })`; `excluirConta` chama `deleteUser({ password })` e depois limpa o estado local como no `AuthService.sair()`. Senha atual errada vira `ErroPerfil('Senha atual incorreta')`.
 
-- [ ] **Passo 1:** testes com o client mockado: a reautenticação falha → erro e sem `updateUser` nem RPC; o fluxo feliz da exclusão chama a RPC e depois `sair`; `atualizarNome` aplica `trim` e chama `AuthService.definirNome` (o Início lê `AuthService.nome`).
+- [ ] **Passo 1:** testes com o `AUTH_CLIENT` mockado e `HttpTestingController`: senha atual errada → `ErroPerfil` e o estado continua logado; o fluxo feliz da exclusão chama `deleteUser` e depois limpa a sessão; `atualizarNome` aplica `trim` e chama `AuthService.definirNome` (o Início lê `AuthService.nome`).
 - [ ] **Passos 2 a 4:** FAIL → implementar → PASS.
 - [ ] **Passo 5:** commit `feat(R-05.3): adiciona serviço de perfil`.
 
@@ -61,7 +62,7 @@
   - **perfil:** iniciais "LS" para "Larissa Santos" e "L" para "Lari"; "No NuBanko desde nov/2026"; itens "Seus dados", "Alterar senha", "Privacidade"; card com o texto do R-01.11; "Sair" e "Excluir minha conta" num grupo separado, com Excluir em `neg` (U-05.1); rodapé "NuBanko v{versao}".
   - **dados:** edita o nome com `nomeValidator`; o e-mail é `readonly`.
   - **senha:** campos atual, nova e confirmar, com a regra do R-01.2 e a mensagem de senha atual incorreta.
-  - **privacidade:** listas "O que guardamos" (nome, e-mail, senha protegida, lançamentos e caixinhas que você cria) e "O que não coletamos" (CPF, telefone, endereço, localização, dados bancários), mais a versão e a data do aceite e o link da Política.
+  - **privacidade:** listas "O que guardamos" (nome, e-mail, senha protegida, lançamentos e caixinhas que você cria, IP e navegador das sessões ativas) e "O que não coletamos" (CPF, telefone, endereço, localização, dados bancários), mais a versão e a data do aceite e o link da Política.
   - **excluir:** explica que é irreversível; o botão só habilita com `EXCLUIR` exato e a senha preenchida (U-05.2).
 - [ ] **Passos 2 a 4:** FAIL → implementar seguindo `design/perfil_nubanko` sem os itens da tabela de divergências → PASS.
 - [ ] **Passo 5:** commit `feat(R-05.1): adiciona telas de perfil e privacidade`.

@@ -32,7 +32,7 @@ export class InicioFacade {
     () => ({ mes: this.mes.mes(), versao: this.alterados.versao() }),
     async ({ mes }) => {
       const [perfil, resumo, lancs, caixinhas] = await Promise.all([
-        this.perfil.obter(), this.resumo.resumoDoMes(mes), this.lancamentos.listarDoMes(mes), this.caixinhas.listar(),
+        this.perfil.obter(), this.resumo.resumoDoMes(mes), this.lancamentos.ultimos(mes, ULTIMOS), this.caixinhas.listar(),
       ]);
       const hoje = hojeISO();
       return {
@@ -42,7 +42,7 @@ export class InicioFacade {
         gastos: resumo.gastos,
         fatias: paraFatiasVM(resumo.porCategoria),
         caixinhas: caixinhas.map((c) => paraCaixinhaVM(c, hoje)).filter((c) => c.estado === 'ativa').slice(0, CAIXINHAS_NO_PAINEL),
-        ultimos: [{ rotulo: '', itens: lancs.slice(0, ULTIMOS).map((l) => paraTransacaoVM(l, hoje)) }].filter((g) => g.itens.length),
+        ultimos: [{ rotulo: '', itens: lancs.map((l) => paraTransacaoVM(l, hoje)) }].filter((g) => g.itens.length),
       };
     },
   );

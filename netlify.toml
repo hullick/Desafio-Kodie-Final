@@ -1,0 +1,42 @@
+# Configuração da Netlify: build, functions, dev local e headers.
+# Decisão de arquitetura: docs/adr/0001-backend-netlify.md
+
+[build]
+  command = "npm ci --prefix web && npm run build --prefix web"
+  publish = "web/dist/web/browser"
+  functions = "netlify/functions"
+
+# Node da build e das functions na Netlify (LTS). O compose local usa a 26.
+[build.environment]
+  NODE_VERSION = "24"
+
+[functions]
+  node_bundler = "esbuild"
+
+# `netlify dev` (local e no serviço app do docker compose):
+# sobe o ng serve na 4200 e expõe tudo, com as functions, na 8888.
+[dev]
+  framework = "#custom"
+  command = "npm start --prefix web -- --host 127.0.0.1 --port 4200"
+  targetPort = 4200
+  port = 8888
+  autoLaunch = false
+
+# /api/* sem function correspondente responde 404 em JSON, não o index.html.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/nao-encontrado"
+  status = 200
+
+# Fallback da SPA: rotas do Angular caem no index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
