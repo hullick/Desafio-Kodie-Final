@@ -20,6 +20,9 @@ import { urlDoSite } from './site.ts';
 
 export const POLITICA_VERSAO = '2026-11';
 
+/** "Esqueci a senha" só funciona com SMTP. Sem SMTP_HOST (produção hoje), as rotas respondem 404. */
+export const RECUPERACAO_SENHA = Boolean(process.env['SMTP_HOST']);
+
 const url = process.env['DATABASE_URL_AUTH'];
 if (!url) throw new Error('DATABASE_URL_AUTH não definida');
 const baseURL = urlDoSite();
@@ -68,6 +71,7 @@ export const auth = betterAuth({
 
   // Só o que o app usa fica exposto.
   disabledPaths: [
+    ...(RECUPERACAO_SENHA ? [] : ['/request-password-reset', '/reset-password']),
     '/update-user', '/change-email', '/send-verification-email', '/verify-email',
     '/sign-in/social', '/link-social', '/unlink-account', '/list-accounts', '/get-access-token',
     '/refresh-token', '/account-info', '/set-password', '/delete-user/callback',

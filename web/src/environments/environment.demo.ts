@@ -5,4 +5,5 @@ export const environment = {
   producao: false,
   versao: pkg.version,
   dados: 'memoria' as 'http' | 'memoria',
+  recuperacaoSenha: true,
 };
