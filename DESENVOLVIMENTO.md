@@ -601,7 +601,7 @@ A Netlify faz a build direto do GitHub a cada push, com as configurações do `n
 | `BETTER_AUTH_URL` | endereço oficial, ex. `https://nubanko.netlify.app`. Escopo **só produção**: em previews, o código usa a URL do próprio deploy (`netlify/lib/site.ts`) |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
 | `NUBANKO_CHAVE_DADOS` | `openssl rand -base64 32`. **Guarde uma cópia no cofre do time** (seção 13.8) |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_REMETENTE` | provedor de e-mail real. Sem isso, "Esqueci a senha" falha |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_REMETENTE` | **Hoje não definidas** (sem SMTP). Sem `SMTP_HOST`, o servidor desliga `/request-password-reset` e `/reset-password` (404), e a build de produção (`environment.prod.ts`, `recuperacaoSenha: false`) esconde "Esqueci a senha" e as rotas `/esqueci-senha` e `/nova-senha`. Para religar: defina as variáveis e troque a flag para `true` |
 
 Não defina `NUBANKO_RATE_LIMIT` em ambiente publicado (o padrão é ligado).
 

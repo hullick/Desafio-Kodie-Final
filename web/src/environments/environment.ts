@@ -9,4 +9,6 @@ export const environment = {
   producao: false,
   versao: pkg.version,
   dados: 'http' as 'http' | 'memoria',
+  /** "Esqueci a senha" depende de SMTP. Ligado aqui porque o compose tem o Mailpit. */
+  recuperacaoSenha: true,
 };
