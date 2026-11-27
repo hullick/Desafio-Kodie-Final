@@ -574,13 +574,12 @@ Os textos que a pessoa escreve ficam cifrados no banco (R-00.8):
 
 ## 14. Deploy na Netlify
 
-A Netlify faz a build direto do GitHub a cada push, com as configurações do `netlify.toml` (comando, pasta publicada, functions e Node 24). Não há passo de build manual.
+**Produção só é publicada por tag.** Os builds automáticos da Netlify ficam parados (Site configuration → Build & deploy → Continuous deployment → *Stop builds*); quem publica é o workflow `.github/workflows/deploy.yml`, disparado pelo push de uma tag `vX.Y.Z`. Ele confere que a tag está no `master`, bate com a versão do `package.json` e tem seção no `CHANGELOG.md`, roda o typecheck e os testes do front e faz `netlify deploy --build --prod` com as configurações do `netlify.toml`. Precisa dos segredos `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID` no GitHub (Settings → Secrets and variables → Actions).
 
 | Branch | Ambiente |
 |--------|----------|
-| `master` | produção (branch de produção do site) |
-| `test` | homologação (branch deploy, quando ligado) |
-| PRs | deploy previews |
+| tag `vX.Y.Z` (no `master`) | produção |
+| `master`, `test`, `develop`, PRs | nada é publicado |
 
 **O banco (Netlify DB / Neon).** As functions **nunca** usam `NETLIFY_DATABASE_URL`: ela entra como o dono do Neon, que contorna o RLS. Elas usam os papéis do app:
 
@@ -605,4 +604,4 @@ A Netlify faz a build direto do GitHub a cada push, com as configurações do `n
 
 Não defina `NUBANKO_RATE_LIMIT` em ambiente publicado (o padrão é ligado).
 
-**Lançar uma versão** (SemVer: MAJOR.MINOR.PATCH, ver `CHANGELOG.md`): mova as notas de "Não lançado" do `CHANGELOG.md` para a nova versão, suba a versão em `package.json` e `web/package.json` numa branch `release/X.Y.Z`, leve `develop` → `test` → `master` com `--no-ff`, crie a tag `vX.Y.Z` no merge do `master` e faça push. O push do `master` dispara o deploy de produção.
+**Lançar uma versão** (SemVer: MAJOR.MINOR.PATCH, ver `CHANGELOG.md`): mova as notas de "Não lançado" do `CHANGELOG.md` para a nova versão, suba a versão em `package.json` e `web/package.json` numa branch `release/X.Y.Z`, leve `develop` → `test` → `master` com `--no-ff`, crie a tag `vX.Y.Z` no merge do `master` e faça push do `master` e da tag (`git push origin master vX.Y.Z`). **O push da tag dispara o deploy de produção**; o do `master` sozinho não publica nada.

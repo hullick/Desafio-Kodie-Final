@@ -22,6 +22,10 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 - Os links entre login e cadastro aparecem sem rolar a tela: "Criar conta" logo abaixo do
   formulário de login e "Já tem uma conta? Entrar" no topo do cadastro.
 
+### Alterado
+- O deploy de produção acontece só com o push de uma tag `vX.Y.Z` no `master`, pelo GitHub
+  Actions (`.github/workflows/deploy.yml`), que confere versão e changelog e roda os testes antes.
+
 ## [1.0.0] - 2026-11-27
 
 Primeira versão: PWA de controle financeiro para quem está no primeiro salário ou estágio.
