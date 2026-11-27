@@ -61,6 +61,33 @@ test.describe('Spec 01: cadastro, login e rotas protegidas', () => {
     await expect(page).toHaveURL(/\/entrar\?voltar=%2Finicio/);
   });
 
+  test('login e cadastro têm link um para o outro, visível sem rolar', async ({ page }) => {
+    await page.goto('/entrar');
+    const criar = page.getByRole('link', { name: 'Criar conta' });
+    await expect(criar).toBeInViewport();
+    await criar.click();
+    await expect(page).toHaveURL(/\/cadastro$/);
+    const entrar = page.getByRole('link', { name: 'Entrar', exact: true });
+    await expect(entrar).toBeInViewport();
+    await entrar.click();
+    await expect(page).toHaveURL(/\/entrar$/);
+  });
+
+  test('ao abrir o site sem sessão, cai no login', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/entrar/);
+    await expect(page.getByRole('heading', { name: 'Entrar' })).toBeVisible();
+  });
+
+  test('com sessão ativa, login e cadastro vão direto para o início', async ({ page }) => {
+    await cadastrarPelaApi(page, novaConta('Nina'));
+    for (const rota of ['/entrar', '/cadastro']) {
+      await page.goto(rota);
+      await expect(page).toHaveURL(/\/inicio$/);
+      await expect(page.getByText('Olá, Nina')).toBeVisible();
+    }
+  });
+
   test('o cookie de sessão é HttpOnly e o token não fica acessível ao JavaScript', async ({ page }) => {
     await cadastrarPelaApi(page);
     const cookie = (await page.context().cookies()).find((k) => k.name.includes('session_token'));

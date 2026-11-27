@@ -1,0 +1,61 @@
+# Deploy de produção na Netlify: só quando uma tag de versão (vX.Y.Z) é enviada.
+# Pushes em branches não publicam nada (os builds automáticos da Netlify ficam parados).
+#
+# Segredos do repositório (Settings → Secrets and variables → Actions):
+#   NETLIFY_AUTH_TOKEN  token pessoal da Netlify (User settings → Applications → Personal access tokens)
+#   NETLIFY_SITE_ID     id do site (Site configuration → Site details → Project ID)
+# As variáveis de runtime (banco, segredos do Better Auth...) ficam na Netlify, não aqui.
+name: Deploy (tag)
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  group: deploy-producao
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: producao
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confere a tag (no master e igual à versão do package.json)
+        run: |
+          versao="v$(node -p "require('./package.json').version")"
+          web="v$(node -p "require('./web/package.json').version")"
+          tag="${GITHUB_REF_NAME}"
+          [[ "$tag" == "$versao" && "$tag" == "$web" ]] || { echo "::error::tag $tag ≠ package.json $versao / web $web"; exit 1; }
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/master || { echo "::error::a tag $tag não está no master"; exit 1; }
+          grep -q "^## \[${tag#v}\]" CHANGELOG.md || { echo "::error::CHANGELOG.md sem a seção ${tag#v}"; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+
+      - name: Dependências
+        run: npm ci && npm ci --prefix web
+
+      - name: Typecheck das functions
+        run: npm run typecheck
+
+      - name: Testes do front
+        run: npx ng test --watch=false
+        working-directory: web
+
+      - name: Build e deploy de produção
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx netlify deploy --build --prod --message "${GITHUB_REF_NAME}"
