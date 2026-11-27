@@ -605,4 +605,4 @@ A Netlify faz a build direto do GitHub a cada push, com as configurações do `n
 
 Não defina `NUBANKO_RATE_LIMIT` em ambiente publicado (o padrão é ligado).
 
-**Lançar uma versão:** suba a versão em `package.json` e `web/package.json` numa branch, leve `develop` → `test` → `master` com `--no-ff`, crie a tag `vX.Y.Z` no merge do `master` e faça push. O push do `master` dispara o deploy de produção.
+**Lançar uma versão** (SemVer: MAJOR.MINOR.PATCH, ver `CHANGELOG.md`): mova as notas de "Não lançado" do `CHANGELOG.md` para a nova versão, suba a versão em `package.json` e `web/package.json` numa branch `release/X.Y.Z`, leve `develop` → `test` → `master` com `--no-ff`, crie a tag `vX.Y.Z` no merge do `master` e faça push. O push do `master` dispara o deploy de produção.
