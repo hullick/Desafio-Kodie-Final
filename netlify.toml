@@ -5,6 +5,9 @@
   command = "npm ci --prefix web && npm run build --prefix web"
   publish = "web/dist/web/browser"
   functions = "netlify/functions"
+  # Produção só sai por tag (GitHub Actions, .github/workflows/deploy.yml). Este comando cancela
+  # todo build disparado por push no Git; o `netlify deploy --build` do workflow não o executa.
+  ignore = "exit 0"
 
 # Node da build e das functions na Netlify (LTS). O compose local usa a 26.
 [build.environment]

@@ -574,7 +574,7 @@ Os textos que a pessoa escreve ficam cifrados no banco (R-00.8):
 
 ## 14. Deploy na Netlify
 
-**Produção só é publicada por tag.** Os builds automáticos da Netlify ficam parados (Site configuration → Build & deploy → Continuous deployment → *Stop builds*); quem publica é o workflow `.github/workflows/deploy.yml`, disparado pelo push de uma tag `vX.Y.Z`. Ele confere que a tag está no `master`, bate com a versão do `package.json` e tem seção no `CHANGELOG.md`, roda o typecheck e os testes do front e faz `netlify deploy --build --prod` com as configurações do `netlify.toml`. Precisa dos segredos `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID` no GitHub (Settings → Secrets and variables → Actions).
+**Produção só é publicada por tag.** Os builds que a Netlify dispara a cada push são cancelados pelo `ignore = "exit 0"` do `netlify.toml`; quem publica é o workflow `.github/workflows/deploy.yml`, disparado pelo push de uma tag `vX.Y.Z`. Ele confere que a tag está no `master`, bate com a versão do `package.json` e tem seção no `CHANGELOG.md`, roda o typecheck e os testes do front e faz `netlify deploy --build --prod` com as configurações do `netlify.toml`. Precisa dos segredos `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID` no GitHub (Settings → Secrets and variables → Actions).
 
 | Branch | Ambiente |
 |--------|----------|
