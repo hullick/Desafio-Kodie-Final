@@ -14,6 +14,17 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 
 ## [Não lançado]
 
+## [1.0.4] - 2026-11-27
+
+### Documentação
+- README com o app publicado e o projeto na Netlify no lugar das instruções locais, contas de
+  demonstração (Lari, Pedro e Ana, com três meses de dados), funcionalidades e automações no ar,
+  números atuais de testes e cobertura e capturas novas, tiradas do app publicado.
+- README com a equipe e os papéis, os slides do pitch (`docs/slides/`), o Prompt Log, o plano de
+  testes, o registro de bugs, o checklist de segurança e LGPD, a avaliação crítica e os registros
+  individuais.
+- `web/README.md` aponta para o app publicado.
+
 ## [1.0.3] - 2026-11-27
 
 ### Alterado
