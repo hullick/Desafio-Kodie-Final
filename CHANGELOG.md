@@ -25,6 +25,7 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 ### Alterado
 - O deploy de produção acontece só com o push de uma tag `vX.Y.Z` no `master`, pelo GitHub
   Actions (`.github/workflows/deploy.yml`), que confere versão e changelog e roda os testes antes.
+  Os builds que a Netlify dispararia a cada push são cancelados (`ignore` no `netlify.toml`).
 
 ## [1.0.0] - 2026-11-27
 
