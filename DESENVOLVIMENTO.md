@@ -583,25 +583,26 @@ Os textos que a pessoa escreve ficam cifrados no banco (R-00.8):
 
 **O banco (Netlify DB / Neon).** As functions **nunca** usam `NETLIFY_DATABASE_URL`: ela entra como o dono do Neon, que contorna o RLS. Elas usam os papéis do app:
 
-1. Pegue a URL **direta** (não pooled) do dono do banco: `npx netlify env:get NETLIFY_DATABASE_URL_UNPOOLED`.
+1. Por padrão, a CLI e a API só recebem a conexão de leitura (`netlifydb_readonly`). Em **Database → Access control**, ligue "Allow personal access tokens full access to the production database" **só enquanto roda o passo 2**, e desligue depois. A conexão do dono (`netlifydb_owner`, host direto, sem `-pooler`) vem de `npx netlify api getSiteDatabase --data '{"site_id":"<id>"}'`. Não cole essa saída em lugar nenhum: ela traz a senha.
 2. Rode, com senhas fortes novas para os três papéis (`openssl rand -hex 24`):
    ```bash
    NEON_URL_ADMIN='<url direta>' NUBANKO_OWNER_PASSWORD=... NUBANKO_APP_PASSWORD=... NUBANKO_AUTH_PASSWORD=... \
      ./scripts/preparar-banco-netlify.sh
    ```
    O script cria os papéis (`nubanko_owner`, `nubanko_app`, `nubanko_auth`) e aplica `db/migrations`. É idempotente: **rode de novo antes de publicar cada release que traga migração** (migrações precisam ser compatíveis com o código anterior).
+   O script **redefine as senhas** dos três papéis. Numa nova execução, use as senhas de `nubanko_app` e `nubanko_auth` que já estão em `DATABASE_URL` e `DATABASE_URL_AUTH` na Netlify; a de `nubanko_owner` pode ser nova (só as migrações a usam).
 
 **Variáveis de ambiente do site** (Site configuration → Environment variables, ou `npx netlify env:set`):
 
 | Variável | Valor |
 |----------|-------|
-| `DATABASE_URL` | URL **pooled** com `nubanko_app` e `sslmode=require` |
+| `DATABASE_URL` | URL **pooled** (host com `-pooler`) com `nubanko_app` e `sslmode=require` |
 | `DATABASE_URL_AUTH` | URL pooled com `nubanko_auth` |
 | `BETTER_AUTH_URL` | endereço oficial, ex. `https://nubanko.netlify.app`. Escopo **só produção**: em previews, o código usa a URL do próprio deploy (`netlify/lib/site.ts`) |
 | `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
 | `NUBANKO_CHAVE_DADOS` | `openssl rand -base64 32`. **Guarde uma cópia no cofre do time** (seção 13.8) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_REMETENTE` | **Hoje não definidas** (sem SMTP). Sem `SMTP_HOST`, o servidor desliga `/request-password-reset` e `/reset-password` (404), e a build de produção (`environment.prod.ts`, `recuperacaoSenha: false`) esconde "Esqueci a senha" e as rotas `/esqueci-senha` e `/nova-senha`. Para religar: defina as variáveis e troque a flag para `true` |
 
-Não defina `NUBANKO_RATE_LIMIT` em ambiente publicado (o padrão é ligado).
+Não defina `NUBANKO_RATE_LIMIT` em ambiente publicado (o padrão é ligado). No plano gratuito da Netlify, as variáveis não podem ser marcadas como secretas nem limitadas às functions: ficam com os escopos padrão, no contexto `production`.
 
 **Lançar uma versão** (SemVer: MAJOR.MINOR.PATCH, ver `CHANGELOG.md`): mova as notas de "Não lançado" do `CHANGELOG.md` para a nova versão, suba a versão em `package.json` e `web/package.json` numa branch `release/X.Y.Z`, leve `develop` → `test` → `master` com `--no-ff`, crie a tag `vX.Y.Z` no merge do `master` e faça push do `master` e da tag (`git push origin master vX.Y.Z`). **O push da tag dispara o deploy de produção**; o do `master` sozinho não publica nada.
