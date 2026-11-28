@@ -1,5 +1,5 @@
 # Deploy de produção na Netlify: só quando uma tag de versão (vX.Y.Z) é enviada.
-# Pushes em branches não publicam nada (os builds automáticos da Netlify ficam parados).
+# Pushes em branches não publicam nada: o `ignore = "exit 0"` do netlify.toml cancela os builds da Netlify.
 #
 # Segredos do repositório (Settings → Secrets and variables → Actions):
 #   NETLIFY_AUTH_TOKEN  token pessoal da Netlify (User settings → Applications → Personal access tokens)
