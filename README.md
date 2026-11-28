@@ -12,15 +12,22 @@ registre um gasto em segundos, veja o mês de relance e junte para o que importa
 
 <br>
 
+### [🌐 Abrir o NuBanko](https://nubanko-kodie.netlify.app)
+
+<br>
+
+[![Netlify Status](https://api.netlify.com/api/v1/badges/2f1319c3-51bc-4d0e-b1b1-2566a997ede5/deploy-status)](https://app.netlify.com/projects/nubanko-kodie/deploys)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.3-01CED1)
 ![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-pronto-5A0FC8?logo=pwa&logoColor=white)
-![Vitest](https://img.shields.io/badge/testes-168_passando-6E9F18?logo=vitest&logoColor=white)
-![Cobertura](https://img.shields.io/badge/cobertura-99%25-01CED1)
+![Netlify](https://img.shields.io/badge/Netlify-Functions_%2B_DB-00C7B7?logo=netlify&logoColor=white)
+![Testes](https://img.shields.io/badge/testes-447_passando-6E9F18?logo=vitest&logoColor=white)
+![Cobertura](https://img.shields.io/badge/cobertura-98%25-01CED1)
 ![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-yellow)
 
-[Sobre](#-sobre) · [Objetivos](#-objetivos) · [Funcionalidades](#-funcionalidades) · [Telas](#-telas) · [Começando](#-começando) · [Documentação](#-documentação) · [Contribuindo](#-contribuindo)
+[Sobre](#-sobre) · [Objetivos](#-objetivos) · [Funcionalidades](#-funcionalidades) · [Acesse](#-acesse) · [Telas](#-telas) · [Documentação](#-documentação) · [Contribuindo](#-contribuindo)
 
 </div>
 
@@ -75,19 +82,39 @@ O **NuBanko** resolve isso com três coisas, e só três:
 
 | Funcionalidade | Status |
 |----------------|:------:|
+| Cadastro e login com e-mail e senha, sessão em cookie seguro | ✅ |
 | Painel do mês: saldo, entradas, gastos, rosca por categoria e troca de mês | ✅ |
 | Esconder valores com o "olho" (para usar em lugar público) | ✅ |
 | Novo lançamento em bottom sheet com teclado numérico próprio | ✅ |
 | Lista de lançamentos por dia, com editar e excluir | ✅ |
 | Caixinhas: criar, editar, guardar, retirar, sugestão mensal e metas atingidas | ✅ |
-| Perfil, edição do nome e página de privacidade em linguagem simples | ✅ |
-| Login e cadastro (telas prontas, com sessão de demonstração) | 🟡 |
-| Backend na Netlify (Functions + Netlify DB) com regras de acesso por dono (RLS) | 🔜 |
-| Autenticação real com Better Auth | 🔜 |
-| Ambiente local com Docker Compose (Postgres, migrações, pgTAP, Mailpit e `netlify dev`) | ✅ |
-| Testes E2E e de usabilidade com Playwright e axe | 🔜 |
+| Perfil (pelo avatar no topo): editar nome, trocar senha e excluir a conta com todos os dados | ✅ |
+| Página de privacidade em linguagem simples | ✅ |
+| Dados no Netlify DB, com cada pessoa vendo só os próprios dados (RLS) e textos cifrados | ✅ |
+| PWA instalável pelo navegador | ✅ |
+| Recuperação de senha por e-mail | 🟡 |
 
-✅ pronto · 🟡 pronto no front, aguardando backend · 🔜 planejado
+✅ no ar · 🟡 pronto, desligado até configurarmos o envio de e-mail
+
+## 🚀 Acesse
+
+| | |
+|---|---|
+| 🌐 **App** | **[nubanko-kodie.netlify.app](https://nubanko-kodie.netlify.app)** (funciona no navegador do celular e pode ser instalado na tela inicial) |
+| ⚙️ **Projeto na Netlify** | [app.netlify.com/projects/nubanko-kodie](https://app.netlify.com/projects/nubanko-kodie) · [deploys](https://app.netlify.com/projects/nubanko-kodie/deploys) |
+| 🏷️ **Versão atual** | **1.0.3** · o que mudou em cada versão está no [CHANGELOG](CHANGELOG.md) |
+
+### Contas de demonstração
+
+Entre com uma delas para ver o app já com três meses de uso (setembro a novembro de 2026), ou crie a sua conta em **Criar conta**.
+
+| Pessoa | E-mail | Senha | O que tem |
+|--------|--------|-------|-----------|
+| 👩🏽‍🎓 Lari, jovem aprendiz | `lari.demo@example.com` | `Nubanko@2026` | Salário de R$ 1.412, gastos do dia a dia e as caixinhas "Celular novo" e "Reserva de emergência" |
+| 👨🏻‍💻 Pedro, estagiário | `pedro.demo@example.com` | `Nubanko@2026` | Bolsa de R$ 1.800 e um freela, curso, e as caixinhas "Viagem de fim de ano" (quase lá) e "Notebook" |
+| 👩🏾‍💼 Ana, primeiro emprego | `ana.demo@example.com` | `Nubanko@2026` | Salário de R$ 2.600, aluguel e mercado, "Presente da mãe" (meta atingida) e "Primeiro carro", com uma retirada |
+
+> As contas são **públicas**: qualquer pessoa pode entrar nelas e mudar os dados. Para guardar coisas suas, crie a sua própria conta.
 
 ## 📱 Telas
 
@@ -100,49 +127,8 @@ O **NuBanko** resolve isso com três coisas, e só três:
 <td align="center"><img src="docs/assets/telas/detalhe-caixinha.png" width="190" alt="Detalhe da caixinha"><br><sub><b>Detalhe da caixinha</b></sub></td>
 </tr>
 </table>
-<sub>Capturas reais do app em 360×740, com os dados de demonstração.</sub>
+<sub>Capturas do app publicado, em 360×740, com a conta de demonstração da Lari.</sub>
 </div>
-
-## 🚀 Começando
-
-**Você precisa de:** [Node.js](https://nodejs.org) 26 e npm 11.
-
-```bash
-git clone git@github.com:hullick/Desafio-Kodie-Final.git
-cd Desafio-Kodie-Final/web
-npm install
-npm start
-```
-
-Abra **http://localhost:4200**. O app já entra logado com os dados de demonstração. Se sair, use `lari@exemplo.com` e qualquer senha.
-
-<details>
-<summary><b>📲 Ver no celular</b></summary>
-
-<br>
-
-```bash
-npx ng serve --host 0.0.0.0
-```
-
-No celular, conectado à mesma rede Wi-Fi, abra `http://<ip-do-seu-computador>:4200`.
-
-</details>
-
-<details>
-<summary><b>🧪 Testes e build</b></summary>
-
-<br>
-
-```bash
-npx ng test --watch=false            # testes unitários e de componente
-npx ng test --watch=false --coverage # com cobertura (mínimo de 80%)
-npm run build                        # build de produção (PWA)
-```
-
-</details>
-
-> **Atenção:** por enquanto os dados ficam **em memória**. Recarregar a página volta tudo ao início. O backend na Netlify entra nas próximas etapas.
 
 ## 🏗️ Como é feito
 
@@ -150,16 +136,19 @@ npm run build                        # build de produção (PWA)
 |---|---|
 | **Front** | Angular 22 (standalone, signals, zoneless), Tailwind CSS 4, ícones Lucide, PWA |
 | **Arquitetura** | Atomic Design (átomos → moléculas → organismos → templates → páginas) com um **facade** por página |
-| **Dados** | Repositórios abstratos: em memória hoje, API em Netlify Functions em seguida, sem mexer nas telas |
-| **Backend** *(planejado)* | Netlify Functions, Netlify DB (Postgres/Neon) com RLS, Better Auth; hospedagem e deploy previews na Netlify |
-| **Testes** | Vitest e TestBed hoje; Playwright, axe e pgTAP no plano |
+| **Dados** | Repositórios abstratos: as telas falam com a API em Netlify Functions sem saber de onde os dados vêm |
+| **Backend** | Netlify Functions (TypeScript), Netlify DB (Postgres/Neon) com RLS por dono e textos cifrados, autenticação com Better Auth |
+| **Testes** | 226 de unidade e componente (Vitest, 98% de cobertura), 93 da API, 64 do banco (pgTAP) e 64 E2E com Playwright e axe em duas telas de celular |
 | **Método** | Desenvolvimento orientado a specs: spec → plan → testes → código |
+| **Deploy** | Produção na Netlify a cada versão (tag `vX.Y.Z`), pelo GitHub Actions, depois dos testes |
 
 ```
 web/src/app/
 ├── core/    regras puras, tipos, datas, dinheiro e contratos de dados
 ├── ui/      design system: atoms · molecules · organisms · templates
 └── pages/   uma pasta por tela: <nome>.page.ts + <nome>.facade.ts
+netlify/     functions da API (/api/*) e bibliotecas do servidor
+db/          migrações SQL e testes pgTAP
 ```
 
 ## 📚 Documentação
@@ -170,6 +159,8 @@ web/src/app/
 | [Specs](docs/specs/README.md) | O **quê** e o **porquê** de cada funcionalidade, com os requisitos e critérios de usabilidade. |
 | [Plans](docs/plans/) | O **como**: as tarefas de implementação de cada spec. |
 | [Design system](design/nubanko_neo_fintech/DESIGN.md) | Cores, tipografia e componentes. Os mockups estão em `design/`. |
+| [CHANGELOG](CHANGELOG.md) | O que mudou em cada versão. |
+| [API](docs/api/openapi.yaml) | Contrato OpenAPI de `/api/*`. |
 | [Registro de IA](docs/ai/registro-ia.md) | O que foi pedido a ferramentas de IA e o que elas geraram. |
 
 ## 🤝 Contribuindo
