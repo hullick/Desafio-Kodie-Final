@@ -24,6 +24,9 @@ select format('create role %I login', r) from unnest(array['nubanko_owner','nuba
 alter role nubanko_owner login nobypassrls password :'owner_senha';
 alter role nubanko_app   login nobypassrls password :'app_senha';
 alter role nubanko_auth  login nobypassrls password :'auth_senha';
+-- O Better Auth usa tabelas sem schema; o pooler do Neon recusa `options=-c search_path=...`
+-- na conexão, então o search_path fica no papel.
+alter role nubanko_auth set search_path = auth;
 select format('grant create, connect on database %I to nubanko_owner', current_database()) \gexec
 grant usage, create on schema public to nubanko_owner;
 -- O dono de public no Neon é o neondb_owner; por isso este grant sai daqui, não das migrações.

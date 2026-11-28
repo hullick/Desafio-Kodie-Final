@@ -46,7 +46,9 @@ export const auth = betterAuth({
   secret: process.env['BETTER_AUTH_SECRET'],
   trustedOrigins: [new URL(baseURL).origin],
   telemetry: { enabled: false },
-  database: new pg.Pool({ connectionString: url, options: '-c search_path=auth', max: 3 }),
+  // O search_path=auth vem do papel (alter role nubanko_auth set search_path), não de `options`:
+  // o pooler do Neon (PgBouncer) recusa parâmetros de inicialização e a conexão falha.
+  database: new pg.Pool({ connectionString: url, max: 3 }),
 
   emailAndPassword: {
     enabled: true,
