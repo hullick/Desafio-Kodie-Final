@@ -14,11 +14,14 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 
 ## [Não lançado]
 
+## [1.0.2] - 2026-11-27
+
 ### Corrigido
 - Cadastro, login e todo `/api/auth/*` respondiam 502 em produção: o pooler do Netlify DB (Neon)
   recusa o parâmetro `search_path` na conexão. O `search_path` do papel `nubanko_auth` passa a
   ser definido no banco (`scripts/preparar-banco-netlify.sh`), e o código não o envia mais.
-  **Antes do deploy**, rode o script de novo no banco de produção (DESENVOLVIMENTO.md, seção 14).
+  Bancos já existentes precisam de `alter role nubanko_auth set search_path = auth` (feito em produção
+  antes deste deploy; local: DESENVOLVIMENTO.md, seção 13.7).
 
 ## [1.0.1] - 2026-11-27
 
