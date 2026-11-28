@@ -14,6 +14,8 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 
 ## [Não lançado]
 
+## [1.0.3] - 2026-11-27
+
 ### Alterado
 - O menu inferior tem só **Início** e **Caixinhas**, com o "+" de novo lançamento no centro. O Perfil
   saiu do menu e continua no avatar com as iniciais, no topo de todas as telas logadas.
