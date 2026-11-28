@@ -14,6 +14,11 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 
 ## [Não lançado]
 
+### Documentação
+- README atualizado para a versão 1.0.3: link do app e do projeto na Netlify, contas de
+  demonstração (Lari, Pedro e Ana, com três meses de dados), funcionalidades no ar, números atuais
+  de testes e cobertura e capturas novas, tiradas do app publicado.
+
 ## [1.0.3] - 2026-11-27
 
 ### Alterado
