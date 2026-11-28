@@ -160,7 +160,7 @@ Ferramentas de IA usadas: ferramenta de design para os mockups e o design system
 | 2 | Hullick (QA e Privacidade) | "Request URL …/api/auth/sign-up/email · Status code 502 Bad Gateway" (log do navegador colado para a IA investigar) | Descobrir por que o cadastro falhava no site publicado | Identificou que o pooler do Netlify DB recusava o `search_path` enviado na conexão | A configuração passou para o papel do banco, a versão 1.0.2 foi publicada e o cadastro voltou (ver bug B-01) |
 | 3 | Luís (PO) | *a incluir* | | | |
 | 4 | Pedro Henrique Amaral (UX/UI) | *a incluir* | | | |
-| 5 | Vinícius Noronha (AI Builder) | *a incluir* | | | |
+| 5 | Vinícius Noronha (AI Builder) | "Compare as regras do projeto (docs/specs/) com o projeto entregue e aponte só o que estiver faltando, quebrado ou fora do combinado, sem sugerir nem inventar coisa nova." | Revisão geral fiel ao plano do time, sem a IA fugir do escopo | A IA comparou specs e código, mas também sugeriu melhorias fora do briefing e apontou um erro de código que não existia | Descartamos as sugestões fora do escopo e conferimos o erro apontado contra as specs e o código antes de mudar qualquer coisa |
 | 6 | Claudio (Tech Lead) | *a incluir* | | | |
 
 ## 🛡️ Qualidade, segurança e LGPD
@@ -236,7 +236,18 @@ Todos os testes usam **dados fictícios** (e-mails `@e2e.nubanko.dev` e `@exampl
 
 <details><summary><b>Luís · Product Owner</b></summary><br><i>A incluir.</i></details>
 <details><summary><b>Pedro Henrique Amaral · UX/UI Designer</b></summary><br><i>A incluir.</i></details>
-<details><summary><b>Vinícius Noronha · AI Builder</b></summary><br><i>A incluir.</i></details>
+<details>
+<summary><b>Vinícius Noronha · AI Builder</b></summary>
+
+<br>
+
+1. **Papel e entrega:** fui o AI Builder do grupo. Usei a IA para transformar as telas e regras definidas pelo time no app funcionando (front, back e banco) e rodei a revisão geral de tudo o que foi feito.
+2. **Prompt e objetivo:** "Compare as regras do projeto (docs/specs/) com o projeto entregue e aponte só o que estiver faltando, quebrado ou fora do combinado, sem sugerir nem inventar coisa nova." Objetivo: fazer uma revisão geral fiel ao plano do time e impedir a IA de fugir do escopo.
+3. **Erro da IA e solução:** quando pedi a revisão, a IA tentou sugerir melhorias fora do briefing, além de apontar erros de código que afetariam uma das principais funções, mas estava equivocada. Conferi o que ela apontou contra as specs e o código antes de aceitar qualquer mudança.
+4. **Módulo do curso:** os de pensamento crítico e lógica, além da parte de refatoração e boas práticas em geral, em especial no uso de IA.
+5. **O que faria diferente:** organizaria melhor minha atuação com um planejamento a seguir. Assim criaria prompts melhores e mais práticos, faria sempre uma revisão rápida a cada nova funcionalidade para evitar retrabalho e não deixaria tudo para a última hora, evitando acumular tarefas.
+
+</details>
 <details><summary><b>Claudio · Tech Lead</b></summary><br><i>A incluir.</i></details>
 
 ## 🏗️ Como é feito
