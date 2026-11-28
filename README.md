@@ -226,11 +226,11 @@ Todos os testes usam **dados fictícios** (e-mails `@e2e.nubanko.dev` e `@exampl
 
 <br>
 
-1. **Papel e entrega:** QA e Privacidade. Entreguei o plano de testes, o registro de bugs e o checklist de segurança e LGPD (seção acima), validei o caminho feliz no app publicado e criei as contas de demonstração com dados fictícios.
-2. **Prompt:** "Aja como um especialista em UX e testes web para verificar se o nível está excelente de testes; verifique também com Playwright, não só testes unitários." O objetivo era testar o app como a pessoa usuária, no navegador, e não só o código isolado.
-3. **Erro da IA:** a aba atual do menu nunca ficava destacada, mas os testes de unidade gerados pela IA passavam, porque só checavam um atributo. Resolvi pedindo um teste no navegador que compara a cor real das abas; ele falhou, corrigimos o estilo e ele passou. Antes disso, o cadastro dava 502 só no site publicado: colei o erro do navegador, a IA achou a causa no banco e publicamos a correção.
-4. **Módulo do curso:** *a completar.*
-5. **O que faria diferente:** colocaria um teste automático no site publicado desde o primeiro deploy, para pegar falhas de produção antes da pessoa usuária.
+1. **Papel e entrega:** fui o QA e Privacidade do grupo. Testei o app publicado como a persona usaria, montei o plano de testes, o registro de bugs e o checklist de segurança e LGPD, e criei as contas de demonstração só com dados fictícios.
+2. **Prompt e objetivo:** "Aja como um especialista em UX e testes web para verificar se o nível está excelente de testes; verifique também com Playwright, não só testes unitários." Objetivo: sair do teste de código isolado e testar o app no navegador, do jeito que a pessoa usuária mexe.
+3. **Erro da IA e solução:** o cadastro funcionava na nossa máquina, mas dava erro 502 no site publicado, e todos os testes da IA passavam. Colei o erro do navegador para ela investigar, a causa era a conexão com o banco em produção, e só considerei resolvido depois de testar de novo no site no ar. Também vi que a aba atual do menu não se destacava, mesmo com os testes passando, e pedi um teste que olha a tela de verdade.
+4. **Módulo do curso:** os de segurança da informação e LGPD foram os que mais ajudaram, porque deram o checklist do que conferir antes de confiar no app; testes automatizados fizeram falta e tive que aprender na prática.
+5. **O que faria diferente:** testaria no site publicado desde o primeiro deploy, e não só na reta final, e registraria cada bug no momento em que aparece, para não depender da memória no fim.
 
 </details>
 
