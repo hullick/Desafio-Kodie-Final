@@ -17,7 +17,7 @@ registre um gasto em segundos, veja o mês de relance e junte para o que importa
 <br>
 
 [![Netlify Status](https://api.netlify.com/api/v1/badges/2f1319c3-51bc-4d0e-b1b1-2566a997ede5/deploy-status)](https://app.netlify.com/projects/nubanko-kodie/deploys)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.3-01CED1)
+![Versão](https://img.shields.io/badge/vers%C3%A3o-1.0.4-01CED1)
 ![Angular](https://img.shields.io/badge/Angular-22-DD0031?logo=angular&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
@@ -113,7 +113,7 @@ O **NuBanko** resolve isso com três coisas, e só três:
 |---|---|
 | 🌐 **App** | **[nubanko-kodie.netlify.app](https://nubanko-kodie.netlify.app)** (funciona no navegador do celular e pode ser instalado na tela inicial) |
 | ⚙️ **Projeto na Netlify** | [app.netlify.com/projects/nubanko-kodie](https://app.netlify.com/projects/nubanko-kodie) · [deploys](https://app.netlify.com/projects/nubanko-kodie/deploys) |
-| 🏷️ **Versão atual** | **1.0.3** · o que mudou em cada versão está no [CHANGELOG](CHANGELOG.md) |
+| 🏷️ **Versão atual** | **1.0.4** · o que mudou em cada versão está no [CHANGELOG](CHANGELOG.md) |
 
 ### Contas de demonstração
 
