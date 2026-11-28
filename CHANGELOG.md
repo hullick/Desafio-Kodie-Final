@@ -14,6 +14,22 @@ ganha a tag `vX.Y.Z` no `master`. Como lançar uma versão: `DESENVOLVIMENTO.md`
 
 ## [Não lançado]
 
+### Alterado
+- O menu inferior tem só **Início** e **Caixinhas**, com o "+" de novo lançamento no centro. O Perfil
+  saiu do menu e continua no avatar com as iniciais, no topo de todas as telas logadas.
+
+### Corrigido
+- A aba atual do menu inferior não se destacava: a cor da marca nunca era aplicada (a classe do
+  `routerLinkActive` perdia para a cor padrão na ordem do CSS). Agora a aba atual fica na cor da
+  marca, em negrito e com uma barra no topo, para não depender só da cor (WCAG 1.4.1).
+
+### Testes
+- E2E da navegação inferior (`web/e2e/06-navegacao.e2e.ts`, 360×740 e 390×844): itens e ordem do
+  menu, "+" centralizado e nos 40% inferiores (U-00.4), alvos de toque de 44px ou mais, troca de aba
+  com `aria-current` e destaque visual, "+" abrindo o lançamento na aba Caixinhas (R-02.1), Perfil pelo
+  avatar, menu à vista após rolar e navegação por teclado.
+- Testes de componente do menu: itens e ordem, ausência do Perfil e `aria-current` na aba da rota.
+
 ## [1.0.2] - 2026-11-27
 
 ### Corrigido
