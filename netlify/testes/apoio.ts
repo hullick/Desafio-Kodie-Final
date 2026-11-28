@@ -69,7 +69,7 @@ export async function chamar(handler: HandlerFn, metodo: string, caminho: string
 }
 
 /** Pool como nubanko_auth (vê o schema auth) para conferir e limpar o que os testes criaram. */
-export const poolAuth = new pg.Pool({ connectionString: process.env['DATABASE_URL_AUTH'], options: '-c search_path=auth', max: 2 });
+export const poolAuth = new pg.Pool({ connectionString: process.env['DATABASE_URL_AUTH'], max: 2 });
 
 /** Lê linhas cruas de uma tabela de domínio como o próprio dono (RLS), para conferir a cifra. */
 export async function linhasCruas<T extends pg.QueryResultRow>(conta: Conta, sql: string, params: unknown[] = []): Promise<T[]> {

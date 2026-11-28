@@ -16,6 +16,9 @@ create role nubanko_owner login password :'owner_senha';
 create role nubanko_app login nobypassrls password :'app_senha';
 -- Só o Better Auth (/api/auth/*) usa este papel; é o único com acesso ao schema auth.
 create role nubanko_auth login nobypassrls password :'auth_senha';
+-- O Better Auth usa tabelas sem schema: o search_path fica no papel (o pooler do Neon recusa
+-- passá-lo na conexão, então local e produção fazem igual).
+alter role nubanko_auth set search_path = auth;
 
 alter database nubanko owner to nubanko_owner;
 alter schema public owner to nubanko_owner;
