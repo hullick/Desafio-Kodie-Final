@@ -66,7 +66,7 @@ O **NuBanko** resolve isso com três coisas, e só três:
 |------------|-------|---------------------|
 | Luís | Product Owner | Problema, persona e funcionalidades priorizadas: [Sobre](#-sobre) e [specs](docs/specs/README.md) |
 | Pedro Henrique Amaral | UX/UI Designer | Protótipo das telas, fluxo e identidade visual: [`design/`](design/) e [design system](design/nubanko_neo_fintech/DESIGN.md) |
-| Vinicius | AI Builder | Prompt mestre e [Prompt Log](#-prompt-log) |
+| Vinícius Noronha | AI Builder | Prompt mestre e [Prompt Log](#-prompt-log) |
 | Claudio | Tech Lead | Estrutura técnica e decisões: [guia de desenvolvimento](DESENVOLVIMENTO.md), [ADR do backend](docs/adr/0001-backend-netlify.md) e [API](docs/api/openapi.yaml) |
 | Hullick Bartholo Gomes | QA e Privacidade | Plano de testes, registro de bugs e checklist de segurança e LGPD: [Qualidade, segurança e LGPD](#-qualidade-segurança-e-lgpd) |
 
@@ -152,7 +152,7 @@ Entre com uma delas para ver o app já com três meses de uso (setembro a novemb
 
 Ferramentas de IA usadas: ferramenta de design para os mockups e o design system (`design/`) e **Claude Code** para specs, código, testes, deploy e documentação. O histórico técnico completo de pedidos está em [`docs/ai/registro-ia.md`](docs/ai/registro-ia.md).
 
-**Prompt mestre** (AI Builder): *Vinicius, a incluir.*
+**Prompt mestre** (AI Builder): *Vinícius Noronha, a incluir.*
 
 | # | Integrante | Prompt | Objetivo | Resultado da IA | Correções feitas |
 |---|------------|--------|----------|-----------------|------------------|
@@ -160,7 +160,7 @@ Ferramentas de IA usadas: ferramenta de design para os mockups e o design system
 | 2 | Hullick (QA e Privacidade) | "Request URL …/api/auth/sign-up/email · Status code 502 Bad Gateway" (log do navegador colado para a IA investigar) | Descobrir por que o cadastro falhava no site publicado | Identificou que o pooler do Netlify DB recusava o `search_path` enviado na conexão | A configuração passou para o papel do banco, a versão 1.0.2 foi publicada e o cadastro voltou (ver bug B-01) |
 | 3 | Luís (PO) | *a incluir* | | | |
 | 4 | Pedro Henrique Amaral (UX/UI) | *a incluir* | | | |
-| 5 | Vinicius (AI Builder) | *a incluir* | | | |
+| 5 | Vinícius Noronha (AI Builder) | *a incluir* | | | |
 | 6 | Claudio (Tech Lead) | *a incluir* | | | |
 
 ## 🛡️ Qualidade, segurança e LGPD
@@ -236,7 +236,7 @@ Todos os testes usam **dados fictícios** (e-mails `@e2e.nubanko.dev` e `@exampl
 
 <details><summary><b>Luís · Product Owner</b></summary><br><i>A incluir.</i></details>
 <details><summary><b>Pedro Henrique Amaral · UX/UI Designer</b></summary><br><i>A incluir.</i></details>
-<details><summary><b>Vinicius · AI Builder</b></summary><br><i>A incluir.</i></details>
+<details><summary><b>Vinícius Noronha · AI Builder</b></summary><br><i>A incluir.</i></details>
 <details><summary><b>Claudio · Tech Lead</b></summary><br><i>A incluir.</i></details>
 
 ## 🏗️ Como é feito
